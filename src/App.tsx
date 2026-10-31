@@ -4,8 +4,12 @@ import NewFicheForm from './NewFicheForm'
 import UserCrud from './UserCrud'
 import FicheActions from './FicheActions'
 import Mailbox from './Mailbox'
-
-const API = (import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000').replace(/\/$/, '')
+import {
+  activatePushNotifications,
+  listenToForegroundMessages,
+  obtenirJetonPushExistant,
+} from './pushNotifications'
+const API_URL = (import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000').replace(/\/$/, '')
 
 type User = {
   id: number
@@ -43,7 +47,7 @@ type Structure = {
 }
 
 async function api<T>(path: string, token: string, options: RequestInit = {}): Promise<T> {
-  const response = await fetch(`${API}${path}`, {
+  const response = await fetch(`${API_URL}${path}`, {
     ...options,
     headers: {
       Authorization: `Bearer ${token}`,
@@ -85,6 +89,16 @@ function App() {
   const isSupervisor = user?.role === 'superviseur'
   const [unreadNotifications, setUnreadNotifications] = useState(0)
 
+  const [pushBusy, setPushBusy] = useState(false)
+    const [pushEnabled, setPushEnabled] = useState(() => {
+    const jeton = localStorage.getItem('scdip_push_token')
+
+    return (
+      Boolean(jeton) &&
+      typeof Notification !== 'undefined' &&
+      Notification.permission === 'granted'
+    )
+  })
   const visibleNavigation = navigation.filter((item) => {
     if (isSupervisor) {
       return item.id === 'dashboard'
@@ -113,13 +127,36 @@ function App() {
   const [showNewFiche, setShowNewFiche] = useState(false)
   const pageSize = 10
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
+    const jetonPush = localStorage.getItem('scdip_push_token')
+
+    // Désactivation côté serveur avant de supprimer la session.
+    if (token && jetonPush) {
+      try {
+        await api(
+          '/api/v1/notifications/appareils/desactiver',
+          token,
+          {
+            method: 'PATCH',
+            body: JSON.stringify({ jeton: jetonPush }),
+          },
+        )
+      } catch (e) {
+        console.warn(
+          'Impossible de désactiver le Push pendant la déconnexion :',
+          e,
+        )
+      }
+    }
+
     localStorage.removeItem('scdip_token')
     setToken('')
     setUser(null)
     setFiches([])
     setUsers([])
-  }, [])
+    setUnreadNotifications(0)
+    setPushEnabled(false)
+  }, [token])
 
   const loadData = useCallback(async (activeToken: string) => {
     setLoading(true)
@@ -153,12 +190,12 @@ function App() {
 
         return
       }
-    } catch (e) {
-      logout()
-      setError(e instanceof Error ? e.message : 'Session invalide. Veuillez vous reconnecter.')
-      setLoading(false)
-      return
-    }
+   } catch (e) {
+     await logout()
+     setError(e instanceof Error ? e.message : 'Session invalide. Veuillez vous reconnecter.')
+     setLoading(false)
+     return
+   }
 
     const results = await Promise.allSettled([
       api<Fiche[]>('/api/v1/fiches?limit=50&offset=0', activeToken),
@@ -217,6 +254,217 @@ function App() {
       window.clearInterval(timer)
     }
   }, [token])
+
+  useEffect(() => {
+    if (!token) return
+
+    let cancelled = false
+
+    async function synchroniserAppareilPush() {
+      // Respecter le choix explicite de désactivation de l'utilisateur.
+      if (localStorage.getItem('scdip_push_disabled') === '1') {
+        return
+      }
+
+      try {
+        const jeton = await obtenirJetonPushExistant()
+
+        if (!jeton || cancelled) return
+
+        await api('/api/v1/notifications/appareils', token, {
+          method: 'POST',
+          body: JSON.stringify({
+            jeton,
+            plateforme: 'web',
+          }),
+        })
+
+        if (!cancelled) {
+          localStorage.setItem('scdip_push_token', jeton)
+          setPushEnabled(true)
+        }
+      } catch (e) {
+        console.warn(
+          'Synchronisation automatique du Push impossible :',
+          e,
+        )
+      }
+    }
+
+    void synchroniserAppareilPush()
+
+    return () => {
+      cancelled = true
+    }
+  }, [token])
+
+  useEffect(() => {
+    if (!token) return
+
+    let cancelled = false
+    let unsubscribe: (() => void) | undefined
+
+    async function demarrerEcoutePush() {
+      try {
+        const arreter = await listenToForegroundMessages((payload) => {
+          if (cancelled) return
+
+          const donnees = payload as {
+            notification?: {
+              title?: string
+              body?: string
+            }
+          }
+
+          const titre =
+            donnees.notification?.title || 'SCDIP - PNLP'
+
+          const message =
+            donnees.notification?.body ||
+            'Vous avez une nouvelle notification.'
+
+          // Afficher la notification système lorsque l'application est ouverte.
+          if (
+            typeof Notification !== 'undefined' &&
+            Notification.permission === 'granted'
+          ) {
+            try {
+              const notification = new Notification(titre, {
+                body: message,
+                icon: '/favicon.ico',
+              })
+
+              notification.onclick = () => {
+                window.focus()
+                notification.close()
+              }
+            } catch (e) {
+              console.warn(
+                'Affichage de la notification système impossible :',
+                e,
+              )
+            }
+          }
+
+          // Actualiser le compteur depuis le serveur.
+          void api<{ non_lues: number }>(
+            '/api/v1/notifications/non-lues/count',
+            token,
+          )
+            .then((result) => {
+              if (!cancelled) {
+                setUnreadNotifications(result.non_lues)
+              }
+            })
+            .catch(() => {
+              // Le prochain rafraîchissement périodique actualisera le compteur.
+            })
+        })
+
+        if (cancelled) {
+          arreter?.()
+        } else {
+          unsubscribe = arreter
+        }
+      } catch (e) {
+        console.error('Écoute des notifications Push impossible :', e)
+      }
+    }
+
+    void demarrerEcoutePush()
+
+    return () => {
+      cancelled = true
+      unsubscribe?.()
+    }
+  }, [token])
+
+//---------------------------------
+
+  async function handleActivatePush() {
+  if (!token || pushBusy) return
+
+  setPushBusy(true)
+
+  try {
+    const jeton = await activatePushNotifications()
+
+    await api('/api/v1/notifications/appareils', token, {
+      method: 'POST',
+      body: JSON.stringify({
+        jeton,
+        plateforme: 'web',
+      }),
+    })
+
+    localStorage.removeItem('scdip_push_disabled')
+    localStorage.setItem('scdip_push_token', jeton)
+    setPushEnabled(true)
+  } catch (e) {
+    console.error('Erreur activation notifications :', e)
+  } finally {
+    setPushBusy(false)
+  }
+}
+
+async function handleDisablePush() {
+  if (!token || pushBusy) return
+
+  const jeton = localStorage.getItem('scdip_push_token')
+
+  if (!jeton) {
+  localStorage.setItem('scdip_push_disabled', '1')
+  localStorage.removeItem('scdip_push_token')
+  setPushEnabled(false)
+  return
+}
+
+  setPushBusy(true)
+
+  try {
+    await api('/api/v1/notifications/appareils/desactiver', token, {
+      method: 'PATCH',
+      body: JSON.stringify({ jeton }),
+    })
+
+    setPushEnabled(false)
+    localStorage.removeItem('scdip_push_token')
+    localStorage.setItem('scdip_push_disabled', '1')
+  } catch (e) {
+    console.error('Erreur désactivation notifications :', e)
+  } finally {
+    setPushBusy(false)
+  }
+}
+
+  const verifierEtatNotifications = useCallback(() => {
+    const jeton = localStorage.getItem('scdip_push_token')
+
+    const autorisationAccordee =
+      typeof Notification !== 'undefined' &&
+      Notification.permission === 'granted'
+
+    setPushEnabled(Boolean(jeton) && autorisationAccordee)
+  }, [])
+
+  useEffect(() => {
+    verifierEtatNotifications()
+
+    const verifierAuRetour = () => {
+      if (document.visibilityState === 'visible') {
+        verifierEtatNotifications()
+      }
+    }
+
+    window.addEventListener('focus', verifierEtatNotifications)
+    document.addEventListener('visibilitychange', verifierAuRetour)
+
+    return () => {
+      window.removeEventListener('focus', verifierEtatNotifications)
+      document.removeEventListener('visibilitychange', verifierAuRetour)
+    }
+  }, [verifierEtatNotifications])
+
   useEffect(() => {
       if (
   isSupervisor
@@ -272,7 +520,7 @@ function App() {
     setLoginError('')
 
     try {
-      const response = await fetch(`${API}/api/v1/auth/login`, {
+      const response = await fetch(`${API_URL}/api/v1/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: email.trim(), password }),
@@ -461,13 +709,44 @@ function App() {
         <header className="topbar">
           <div className="breadcrumbs">SCDIP <span>/</span> <strong>{pageTitle}</strong></div>
           <div className="top-actions">
-            <span className="connection"><span className="online-dot" /> Connecté</span>
-            <button className="refresh-button" onClick={() => void loadData(token)} disabled={loading}>
+            <span className="connection">
+              <span className="online-dot" /> Connecté
+            </span>
+
+            <button
+              type="button"
+              className="refresh-button"
+              onClick={() => {
+                if (pushEnabled) {
+                  void handleDisablePush()
+                } else {
+                  void handleActivatePush()
+                }
+              }}
+              disabled={pushBusy}
+              title={
+                pushEnabled
+                  ? 'Désactiver les notifications'
+                  : 'Activer les notifications'
+              }
+              aria-label={
+                pushEnabled
+                  ? 'Désactiver les notifications'
+                  : 'Activer les notifications'
+              }
+            >
+              {pushEnabled ? '🔔' : '🔕'}
+            </button>
+
+            <button
+              className="refresh-button"
+              onClick={() => void loadData(token)}
+              disabled={loading}
+            >
               <span className={loading ? 'spin' : ''}>↻</span> Actualiser
             </button>
           </div>
         </header>
-
         <div className="content">
           <div className="page-heading">
             <div>

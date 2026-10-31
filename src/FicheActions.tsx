@@ -1,4 +1,5 @@
-﻿import { useState } from 'react'
+﻿// scdip\web\src\FicheActions.tsx
+import { useState } from 'react'
 
 const API = (import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000').replace(/\/$/, '')
 

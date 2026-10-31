@@ -8,6 +8,10 @@ type Structure = {
   code: string
   libelle: string
   actif?: boolean
+  region_id?: number
+  prefecture_id?: number
+  commune_id?: number
+  type_fs?: string
 }
 
 type User = {
@@ -169,10 +173,35 @@ export default function UserCrud({
   const pageCount = Math.max(1, Math.ceil(filteredUsers.length / pageSize))
   const visibleUsers = filteredUsers.slice(page * pageSize, (page + 1) * pageSize)
 
-  const availablePrefectures = prefectures
-  const availableCommunes = communes
-  const availableFormations = formations
+  const availablePrefectures = useMemo(() => {
+    if (!form.region_id) return []
 
+    return prefectures.filter(
+      (item) =>
+        String((item as Structure & { region_id?: number }).region_id ?? '') ===
+        form.region_id,
+    )
+  }, [prefectures, form.region_id])
+
+  const availableCommunes = useMemo(() => {
+    if (!form.prefecture_id) return []
+
+    return communes.filter(
+      (item) =>
+        String((item as Structure & { prefecture_id?: number }).prefecture_id ?? '') ===
+        form.prefecture_id,
+    )
+  }, [communes, form.prefecture_id])
+
+  const availableFormations = useMemo(() => {
+    if (!form.commune_id) return []
+
+    return formations.filter(
+      (item) =>
+        String((item as Structure & { commune_id?: number }).commune_id ?? '') ===
+        form.commune_id,
+    )
+  }, [formations, form.commune_id])
   function closeModal() {
     if (busy) return
     setMode(null)

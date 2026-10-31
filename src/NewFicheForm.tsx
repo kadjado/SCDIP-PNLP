@@ -1,10 +1,26 @@
+
 import { useEffect, useState } from 'react'
+import './NewFicheForm.css'
 
 const API = (import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000').replace(/\/$/, '')
 
 type TypeTDR = { id: number; code: string; libelle: string }
+type Localisation = {
+  id: number
+  code: string
+  libelle: string
+}
+
 type Contexte = {
-  formation_sanitaire: { id: number; code: string; libelle: string; type_fs: string }
+  region: Localisation
+  prefecture: Localisation
+  commune: Localisation
+  formation_sanitaire: {
+    id: number
+    code: string
+    libelle: string
+    type_fs: string
+  }
   types_tdr: TypeTDR[]
 }
 
@@ -168,24 +184,64 @@ export default function NewFicheForm({ token, onCancel, onCreated }: Props) {
 
   return (
     <section className="panel nf-panel">
-      <div className="panel-heading">
-        <div>
-          <h2>Nouvelle fiche paludisme</h2>
-          <p className="muted">Renseignez les informations de consultation et de prise en charge.</p>
+      
+      <div className="nf-official-header">
+        <div className="nf-institution">
+          <div className="nf-emblem">
+            <span>PNLP</span>
+          </div>
+          <div className="nf-institution-text">
+            <h2>RÉPUBLIQUE TOGOLAISE</h2>
+            <p>Ministère de la Santé</p>
+            <p>Programme National de Lutte contre le Paludisme</p>
+          </div>
+          <button
+            type="button"
+            className="secondary-button nf-cancel-top"
+            onClick={onCancel}
+            disabled={saving}
+          >
+            Annuler
+          </button>
         </div>
-        <button type="button" className="secondary-button" onClick={onCancel} disabled={saving}>
-          Annuler
-        </button>
+
+        <div className="nf-document-title">
+          <h1>FICHE DE COLLECTE DES DONNÉES</h1>
+          <p>SUR LE PALUDISME</p>
+          <span>SCDIP — Système de collecte des données</span>
+        </div>
+
+        <div className="nf-document-meta">
+          <span>IDENTIFICATION DE LA FORMATION SANITAIRE</span>
+          <span>{loadingContext ? 'Chargement…' : context ? 'Contexte chargé' : 'Contexte indisponible'}</span>
+        </div>
+
+        {context && (
+          <div className="nf-context">
+            <div className="nf-context-item">
+              <span>RÉGION</span>
+              <strong>{context.region?.libelle || '—'}</strong>
+            </div>
+            <div className="nf-context-item">
+              <span>PRÉFECTURE</span>
+              <strong>{context.prefecture?.libelle || '—'}</strong>
+            </div>
+            <div className="nf-context-item">
+              <span>COMMUNE</span>
+              <strong>{context.commune?.libelle || '—'}</strong>
+            </div>
+            <div className="nf-context-item">
+              <span>FORMATION SANITAIRE</span>
+              <strong>
+                {context.formation_sanitaire
+                  ? `${context.formation_sanitaire.libelle} (${context.formation_sanitaire.type_fs})`
+                  : '—'}
+              </strong>
+            </div>
+          </div>
+        )}
       </div>
 
-      {loadingContext && <p className="muted">Chargement de la formation sanitaire…</p>}
-      {context && (
-        <div className="nf-context">
-          <strong>{context.formation_sanitaire.libelle}</strong>
-          <span>Code : {context.formation_sanitaire.code}</span>
-          <span>Type : {context.formation_sanitaire.type_fs}</span>
-        </div>
-      )}
       {error && <div className="alert error" role="alert">{error}</div>}
 
       <form onSubmit={submit}>
@@ -226,7 +282,6 @@ export default function NewFicheForm({ token, onCancel, onCreated }: Props) {
               </select>
             </label>
             {yesNo('fievre', 'Fièvre')}
-            {yesNo('tpi1', 'TPI1', 'Non') && null}
             <label className="nf-field">
               <span>TPI1</span>
               <select value={tpi1 ? 'Oui' : 'Non'} onChange={(e) => setTpi1(e.target.value === 'Oui')}>

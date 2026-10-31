@@ -74,8 +74,50 @@ export default function Mailbox({
     }
   }, [filter, request, onUnreadCountChange])
 
-  useEffect(() => {
-    void loadNotifications()
+    useEffect(() => {
+    let cancelled = false
+    let loadingRequest = false
+
+    const refresh = async () => {
+      if (
+        cancelled ||
+        loadingRequest ||
+        document.visibilityState !== 'visible'
+      ) {
+        return
+      }
+
+      loadingRequest = true
+
+      try {
+        await loadNotifications()
+      } finally {
+        loadingRequest = false
+      }
+    }
+
+    void refresh()
+
+    const timer = window.setInterval(() => {
+      void refresh()
+    }, 15000)
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        void refresh()
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    return () => {
+      cancelled = true
+      window.clearInterval(timer)
+      document.removeEventListener(
+        'visibilitychange',
+        handleVisibilityChange,
+      )
+    }
   }, [loadNotifications])
 
   const markAsRead = async (id: number) => {

@@ -1,0 +1,237 @@
+
+/* En-tête administratif de la fiche SCDIP-PNLP */
+
+.nf-official-header {
+  margin-bottom: 26px;
+  overflow: hidden;
+  border: 1px solid #d8e2dc;
+  border-radius: 12px;
+  background: #fff;
+  color: #24352b;
+}
+
+.nf-institution {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 22px 24px;
+  border-bottom: 3px solid #267447;
+}
+
+.nf-emblem {
+  display: flex;
+  flex: 0 0 64px;
+  width: 64px;
+  height: 64px;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #267447;
+  border-radius: 50%;
+  color: #267447;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 1px;
+}
+
+.nf-institution-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.nf-institution-text h2 {
+  margin: 0 0 7px;
+  color: #1d5837;
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+}
+
+.nf-institution-text p {
+  margin: 3px 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.nf-document-title {
+  padding: 26px 20px 22px;
+  text-align: center;
+  background: #f6faf7;
+}
+
+.nf-document-title h1 {
+  margin: 0;
+  color: #1d5837;
+  font-size: clamp(18px, 2.5vw, 25px);
+  font-weight: 800;
+  line-height: 1.4;
+  letter-spacing: 0.5px;
+}
+
+.nf-document-title > p {
+  margin: 5px 0 10px;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 2px;
+}
+
+.nf-document-title > span {
+  color: #627268;
+  font-size: 12px;
+}
+
+.nf-document-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 13px 22px;
+  background: #267447;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.nf-document-meta span:last-child {
+  text-align: right;
+  font-weight: 500;
+}
+
+.nf-context {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0;
+  padding: 8px 22px 18px;
+}
+
+.nf-context-item {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 7px;
+  min-width: 0;
+  padding: 14px 12px;
+  border-bottom: 1px solid #e6ece8;
+}
+
+.nf-context-item span {
+  color: #66776c;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+}
+
+.nf-context-item strong {
+  overflow-wrap: anywhere;
+  color: #24352b;
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.nf-cancel-top {
+  flex-shrink: 0;
+}
+
+.nf-section {
+  margin-top: 22px;
+  padding: 22px;
+  border: 1px solid #dce5df;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.nf-section legend {
+  padding: 0 10px;
+  color: #21683e;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.nf-field {
+  min-width: 0;
+}
+
+.nf-field input,
+.nf-field select,
+.nf-field textarea {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid #d5ded8;
+  border-radius: 7px;
+  background: #fff;
+  padding: 10px 12px;
+  font: inherit;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.nf-field input:focus,
+.nf-field select:focus,
+.nf-field textarea:focus {
+  border-color: #267447;
+  outline: none;
+  box-shadow: 0 0 0 3px rgb(38 116 71 / 12%);
+}
+
+.nf-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+@media (max-width: 600px) {
+  .nf-institution {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    padding: 16px;
+  }
+
+  .nf-emblem {
+    flex-basis: 48px;
+    width: 48px;
+    height: 48px;
+    font-size: 12px;
+  }
+
+  .nf-institution-text h2 {
+    font-size: 13px;
+  }
+
+  .nf-institution-text p {
+    font-size: 12px;
+  }
+
+  .nf-cancel-top {
+    margin-left: auto;
+  }
+
+  .nf-document-title {
+    padding: 22px 12px;
+  }
+
+  .nf-document-meta {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 6px;
+    padding: 12px 16px;
+  }
+
+  .nf-document-meta span:last-child {
+    text-align: left;
+  }
+
+  .nf-context {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 6px 14px 14px;
+  }
+
+  .nf-section {
+    padding: 16px 12px;
+  }
+
+  .nf-actions button {
+    flex: 1;
+  }
+}
