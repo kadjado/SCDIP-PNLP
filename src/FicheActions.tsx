@@ -1,6 +1,6 @@
 ﻿// scdip\web\src\FicheActions.tsx
 import { useState } from 'react'
-
+import './FicheActions.css'
 const API = (import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000').replace(/\/$/, '')
 
 type FicheActionsProps = {
@@ -139,7 +139,7 @@ export default function FicheActions({
       {showDetail && detail && (
         <div className="user-modal-backdrop" onClick={() => setShowDetail(false)}>
           <section
-            className="user-modal"
+            className="user-modal fiche-modal"
             role="dialog"
             aria-modal="true"
             aria-labelledby="fiche-detail-title"

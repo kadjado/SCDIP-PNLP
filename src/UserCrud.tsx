@@ -1,7 +1,7 @@
-
 import { useMemo, useState } from 'react'
+import './UserCrud.css'
 
-const API = (import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000').replace(/\/$/, '')
+const API = (import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000' || 'http://localhost:8000').replace(/\/$/, '')
 
 type Structure = {
   id: number
@@ -364,7 +364,7 @@ export default function UserCrud({
   }
 
   return (
-    <section className="panel">
+    <section className="panel user-crud">
       <div className="panel-heading user-crud-heading">
         <div>
           <h2>Comptes utilisateurs</h2>
