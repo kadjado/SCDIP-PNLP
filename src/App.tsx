@@ -84,7 +84,7 @@ type Page = typeof navigation[number]['id']
 
 const pagePaths: Record<Page, string> = {
   dashboard: '/dashboard',
-  fiches: '/fiches',
+  fiches: '/forms',
   mailbox: '/messagerie',
   users: '/utilisateurs',
   structures: '/structures',
@@ -94,7 +94,7 @@ const pathPages: Record<string, Page> = {
   '/': 'dashboard',
   '/login': 'dashboard',
   '/dashboard': 'dashboard',
-  '/fiches': 'fiches',
+  '/forms': 'fiches',
   '/messagerie': 'mailbox',
   '/utilisateurs': 'users',
   '/structures': 'structures',
