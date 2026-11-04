@@ -1,0 +1,505 @@
+/* ==========================================================================
+   NewFicheForm.css — Fiche de collecte SCDIP-PNLP
+   Même identité visuelle que les pages Connexion, Tableau de bord et
+   Utilisateurs : fond bleu très clair, cartes blanches arrondies,
+   marine pour les titres, dégradé bleu → vert pour les actions.
+   ========================================================================== */
+
+.nf-panel {
+  --nf-navy: #0b2a6f;
+  --nf-navy-soft: #1d3f8f;
+  --nf-blue: #0a63b5;
+  --nf-green: #1fa65a;
+  --nf-teal: #0e8a8f;
+  --nf-text: #1c2b4a;
+  --nf-muted: #5f6f8f;
+  --nf-border: #d9e3f2;
+  --nf-border-strong: #bccbe3;
+  --nf-surface: #ffffff;
+  --nf-wash: linear-gradient(100deg, #eaf2ff 0%, #eef8f3 100%);
+  --nf-gradient: linear-gradient(100deg, #0a63b5 0%, #1fa65a 100%);
+  --nf-radius: 18px;
+  --nf-shadow: 0 1px 2px rgba(16, 42, 100, 0.05), 0 10px 28px rgba(16, 42, 100, 0.07);
+
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  color: var(--nf-text);
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  line-height: 1.45;
+}
+
+/* Neutralise le style générique « .panel » : chaque bloc est sa propre carte. */
+.nf-panel.panel {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+
+.nf-panel *,
+.nf-panel *::before,
+.nf-panel *::after {
+  box-sizing: border-box;
+}
+
+/* ---------- En-tête officiel ---------- */
+
+.nf-official-header {
+  overflow: hidden;
+  background: var(--nf-surface);
+  border: 1px solid var(--nf-border);
+  border-radius: var(--nf-radius);
+  box-shadow: var(--nf-shadow);
+}
+
+.nf-institution {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 20px 24px;
+  background: var(--nf-wash);
+  border-bottom: 1px solid var(--nf-border);
+}
+
+.nf-emblem {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 76px;
+  height: 76px;
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid var(--nf-border);
+  border-radius: 20px;
+  box-shadow: 0 4px 14px rgba(16, 42, 100, 0.1);
+}
+
+.nf-emblem img,
+.nf-emblem svg {
+  width: 82%;
+  height: 82%;
+  object-fit: contain;
+}
+
+/* Repli si le logo n'est pas chargé : le texte « PNLP » dans une pastille. */
+.nf-emblem span {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  background: var(--nf-gradient);
+}
+
+.nf-institution-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.nf-institution-text h2 {
+  margin: 0 0 2px;
+  color: var(--nf-navy);
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+}
+
+.nf-institution-text p {
+  margin: 0;
+  color: var(--nf-muted);
+  font-size: 13.5px;
+}
+
+.nf-document-title {
+  padding: 24px 24px 8px;
+}
+
+.nf-document-title h1,
+.nf-document-title p {
+  margin: 0;
+  font-size: clamp(22px, 3.2vw, 30px);
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+}
+
+.nf-document-title h1 {
+  color: var(--nf-navy);
+}
+
+.nf-document-title p {
+  color: var(--nf-green);
+}
+
+.nf-document-title span {
+  display: block;
+  margin-top: 8px;
+  color: var(--nf-muted);
+  font-size: 13.5px;
+}
+
+.nf-document-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 18px 24px 12px;
+}
+
+.nf-document-meta span:first-child {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--nf-navy);
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.nf-document-meta span:first-child::before {
+  width: 8px;
+  height: 8px;
+  content: '';
+  background: var(--nf-gradient);
+  border-radius: 50%;
+}
+
+.nf-document-meta span:last-child {
+  padding: 5px 12px;
+  color: var(--nf-muted);
+  font-size: 12.5px;
+  font-weight: 600;
+  background: #f1f5fb;
+  border: 1px solid var(--nf-border);
+  border-radius: 999px;
+}
+
+/* ---------- Contexte (région, préfecture, commune, formation sanitaire) ---------- */
+
+.nf-context {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 12px;
+  padding: 0 24px 24px;
+}
+
+.nf-context-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  background: #f7f9fd;
+  border: 1px solid var(--nf-border);
+  border-left: 4px solid var(--nf-blue);
+  border-radius: 12px;
+}
+
+.nf-context-item:nth-child(2) {
+  border-left-color: var(--nf-teal);
+}
+
+.nf-context-item:nth-child(3) {
+  border-left-color: #14975a;
+}
+
+.nf-context-item:nth-child(4) {
+  border-left-color: var(--nf-green);
+}
+
+.nf-context-item span {
+  color: var(--nf-muted);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+}
+
+.nf-context-item strong {
+  color: var(--nf-navy);
+  font-size: 15px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+/* ---------- Message d'erreur ---------- */
+
+.nf-panel .alert.error {
+  padding: 13px 16px;
+  color: #8f1d1d;
+  font-size: 14px;
+  font-weight: 500;
+  background: #fff3f3;
+  border: 1px solid #f3c4c4;
+  border-left: 4px solid #d94646;
+  border-radius: 12px;
+}
+
+/* ---------- Sections du formulaire ---------- */
+
+.nf-panel form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.nf-section {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background: var(--nf-surface);
+  border: 1px solid var(--nf-border);
+  border-radius: var(--nf-radius);
+  box-shadow: var(--nf-shadow);
+}
+
+/* La légende, flottante sur toute la largeur, sert d'en-tête de carte. */
+.nf-section legend {
+  float: left;
+  position: relative;
+  width: 100%;
+  margin: 0;
+  padding: 15px 24px 15px 28px;
+  color: var(--nf-navy);
+  font-size: 16px;
+  font-weight: 800;
+  background: var(--nf-wash);
+  border-bottom: 1px solid var(--nf-border);
+}
+
+.nf-section legend::before {
+  position: absolute;
+  top: 14px;
+  bottom: 14px;
+  left: 0;
+  width: 5px;
+  content: '';
+  background: var(--nf-gradient);
+  border-radius: 0 4px 4px 0;
+}
+
+.nf-grid {
+  clear: both;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 18px 20px;
+  padding: 22px 24px 26px;
+}
+
+/* ---------- Champs ---------- */
+
+.nf-field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+}
+
+.nf-field > span {
+  color: #34456b;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.nf-wide {
+  grid-column: 1 / -1;
+}
+
+.nf-field input,
+.nf-field select,
+.nf-field textarea {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 14px;
+  color: var(--nf-text);
+  font: inherit;
+  font-size: 14.5px;
+  background: #fff;
+  border: 1px solid var(--nf-border-strong);
+  border-radius: 12px;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.nf-field textarea {
+  min-height: 84px;
+  resize: vertical;
+}
+
+.nf-field input::placeholder,
+.nf-field textarea::placeholder {
+  color: #8b9ab8;
+}
+
+.nf-field select {
+  padding-right: 40px;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%235f6f8f' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  background-size: 16px;
+  appearance: none;
+}
+
+.nf-field input:hover,
+.nf-field select:hover,
+.nf-field textarea:hover {
+  border-color: #8fa7cf;
+}
+
+.nf-field input:focus,
+.nf-field select:focus,
+.nf-field textarea:focus {
+  border-color: var(--nf-blue);
+  box-shadow: 0 0 0 4px rgba(10, 99, 181, 0.15);
+}
+
+.nf-field input:user-invalid,
+.nf-field select:user-invalid,
+.nf-field textarea:user-invalid {
+  border-color: #d94646;
+  box-shadow: 0 0 0 4px rgba(217, 70, 70, 0.12);
+}
+
+/* ---------- Boutons ---------- */
+
+.nf-panel .primary-button,
+.nf-panel .secondary-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 46px;
+  padding: 0 26px;
+  font: inherit;
+  font-size: 14.5px;
+  font-weight: 700;
+  cursor: pointer;
+  border-radius: 999px;
+  transition: transform 0.12s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+
+.nf-panel .primary-button {
+  color: #fff;
+  background: var(--nf-gradient);
+  border: 0;
+  box-shadow: 0 8px 18px rgba(10, 99, 181, 0.28);
+}
+
+.nf-panel .primary-button:hover:not(:disabled) {
+  box-shadow: 0 10px 22px rgba(10, 99, 181, 0.36);
+  transform: translateY(-1px);
+}
+
+.nf-panel .secondary-button {
+  color: var(--nf-navy-soft);
+  background: #fff;
+  border: 1px solid var(--nf-border-strong);
+}
+
+.nf-panel .secondary-button:hover:not(:disabled) {
+  background: #f1f6fd;
+  border-color: var(--nf-blue);
+}
+
+.nf-panel .primary-button:disabled,
+.nf-panel .secondary-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  box-shadow: none;
+}
+
+.nf-panel .nf-cancel-top {
+  flex: none;
+  min-height: 40px;
+  padding: 0 20px;
+}
+
+.nf-panel button:focus-visible,
+.nf-panel a:focus-visible {
+  outline: 3px solid rgba(10, 99, 181, 0.4);
+  outline-offset: 2px;
+}
+
+/* Barre d'actions, toujours visible en bas de la fiche. */
+.nf-actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 14px 20px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid var(--nf-border);
+  border-radius: var(--nf-radius);
+  box-shadow: 0 -6px 24px rgba(16, 42, 100, 0.08);
+  backdrop-filter: blur(8px);
+}
+
+/* ---------- Mobile ---------- */
+
+@media (max-width: 640px) {
+  .nf-institution {
+    flex-wrap: wrap;
+    padding: 16px;
+  }
+
+  .nf-emblem {
+    width: 60px;
+    height: 60px;
+    border-radius: 16px;
+  }
+
+  .nf-institution-text {
+    flex-basis: calc(100% - 80px);
+  }
+
+  .nf-panel .nf-cancel-top {
+    width: 100%;
+  }
+
+  .nf-document-title,
+  .nf-document-meta {
+    padding-right: 16px;
+    padding-left: 16px;
+  }
+
+  .nf-context {
+    padding: 0 16px 18px;
+  }
+
+  .nf-grid {
+    grid-template-columns: 1fr;
+    padding: 18px 16px 22px;
+  }
+
+  .nf-section legend {
+    padding-right: 16px;
+  }
+
+  .nf-actions {
+    flex-direction: column-reverse;
+  }
+
+  .nf-panel .primary-button,
+  .nf-panel .secondary-button {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nf-panel * {
+    transition: none !important;
+  }
+}

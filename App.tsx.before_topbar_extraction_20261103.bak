@@ -1,0 +1,440 @@
+﻿import { useCallback, useEffect, useRef, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
+import './App.css'
+import UserCrud from './components/users/UserCrud'
+import Mailbox from './components/mailbox/Mailbox'
+import { useAuth } from './contexts/AuthContext'
+import { usePush } from './contexts/PushContext'
+import { useAppData } from './hooks/useAppData'
+import { useSupervisorActions } from './hooks/useSupervisorActions'
+import { useFichesPagination } from './hooks/useFichesPagination'
+import Icon from './components/shared/Icon'
+import StructurePanel from './components/structures/StructurePanel'
+import ProfilePage from './components/account/ProfilePage'
+import HelpPage from './components/account/HelpPage'
+import ComingSoon from './components/shared/ComingSoon'
+import LoginPage from './components/auth/LoginPage'
+import FichesPage from './components/fiches/FichesPage'
+import DashboardPage from './components/dashboard/DashboardPage'
+import AppSidebar from './components/layout/AppSidebar'
+import {
+  navigation,
+  settingsNavigation,
+  accountPages,
+  supervisorPages,
+  pageSubtitles,
+  pagePaths,
+  pathPages,
+} from './config/navigation'
+
+import type { Page } from './config/navigation'
+
+import { api } from './services/api'
+
+import type {
+  PagedFiches,
+} from './types'
+
+
+function App() {
+  const navigate = useNavigate()
+  const location = useLocation()
+
+  const {
+    token,
+    user,
+    setUser,
+    login,
+    clearSession,
+  } = useAuth()
+
+  const {
+    pushEnabled,
+    pushBusy,
+    unreadNotifications,
+    setUnreadNotifications,
+    activatePush,
+    disablePush,
+    disablePushForLogout,
+  } = usePush()
+
+  const page: Page = pathPages[location.pathname] || 'dashboard'
+
+  const setPage = useCallback((nextPage: Page) => {
+    navigate(pagePaths[nextPage])
+  }, [navigate])
+
+  useEffect(() => {
+    if (!token) {
+      if (location.pathname !== '/login') {
+        navigate('/login', { replace: true })
+      }
+      return
+    }
+
+    if (location.pathname === '/' || location.pathname === '/login') {
+      navigate('/dashboard', { replace: true })
+    }
+  }, [token, location.pathname, navigate])
+  const [refreshKey, setRefreshKey] = useState(0)
+  const isSupervisor = user?.role === 'superviseur'
+  const visibleNavigation = navigation.filter((item) => {
+    if (isSupervisor) {
+      return item.id === 'dashboard'
+        || item.id === 'fiches'
+        || item.id === 'mailbox'
+    }
+    return true
+  })
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [loginError, setLoginError] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [search, setSearch] = useState('')
+  const [pageOffset, setPageOffset] = useState(0)
+  const [showNewFiche, setShowNewFiche] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(() => typeof window === 'undefined' || window.innerWidth > 900)
+  const [settingsOpen, setSettingsOpen] = useState(() =>
+    settingsNavigation.some((item) => item.id === pathPages[location.pathname]),
+  )
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false)
+  const profileRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!profileMenuOpen) return
+    const onPointerDown = (event: MouseEvent) => {
+      if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
+        setProfileMenuOpen(false)
+      }
+    }
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setProfileMenuOpen(false)
+    }
+    document.addEventListener('mousedown', onPointerDown)
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown)
+      document.removeEventListener('keydown', onKeyDown)
+    }
+  }, [profileMenuOpen])
+  const pageSize = 10
+  const {
+    pagedFiches,
+    setPagedFiches,
+    totalFiches,
+    setTotalFiches,
+  } = useFichesPagination({
+    token,
+    page,
+    search,
+    pageOffset,
+    pageSize,
+    refreshKey,
+    setLoading,
+    setError,
+  })
+    const handleInvalidSession = useCallback(async () => {
+    await disablePushForLogout()
+    clearSession()
+  }, [disablePushForLogout, clearSession])
+
+  const {
+    fiches,
+    users,
+    regions,
+    prefectures,
+    communes,
+    formations,
+    loadData,
+    clearSessionData,
+  } = useAppData({
+    setUser,
+    setLoading,
+    setError,
+    onSessionInvalid: handleInvalidSession,
+  })
+  const { handleSupervisorAction } = useSupervisorActions({
+    token,
+    role: user?.role,
+    setBusy,
+    setError,
+    loadData,
+    onRefresh: () => setRefreshKey((value) => value + 1),
+  })
+  const logout = useCallback(async () => {
+    await handleInvalidSession()
+    clearSessionData()
+  }, [handleInvalidSession, clearSessionData])
+
+  useEffect(() => {
+    if (token) void loadData(token)
+  }, [token, loadData])
+
+  useEffect(() => {
+      if (
+  isSupervisor
+  && !supervisorPages.includes(page)
+) {
+      setPage('dashboard')
+    }
+  }, [isSupervisor, page])
+  async function handleLogin(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setBusy(true)
+    setLoginError('')
+
+    try {
+      await login(email.trim(), password)
+      setPassword('')
+    } catch (e) {
+      setLoginError(
+        e instanceof Error
+          ? e.message
+          : 'Impossible de contacter le serveur.',
+      )
+    } finally {
+      setBusy(false)
+    }
+  }
+  
+  if (!token) {
+  return (
+    <LoginPage
+      email={email}
+      setEmail={setEmail}
+      password={password}
+      setPassword={setPassword}
+      showPassword={showPassword}
+      setShowPassword={setShowPassword}
+      loginError={loginError}
+      error={error}
+      busy={busy}
+      onSubmit={handleLogin}
+    />
+  )
+}
+
+  const pageTitle = [...navigation, ...settingsNavigation, ...accountPages]
+    .find((item) => item.id === page)?.label || 'Tableau de bord'
+  const userRoleLabel = (user?.role || 'Compte connecté').replace(/_/g, ' ')
+  const openAccountPage = (target: 'profil' | 'aide') => {
+    setProfileMenuOpen(false)
+    setSearch('')
+    setPage(target)
+  }
+  return (
+    <div className={`app-shell ${menuOpen ? '' : 'menu-closed'}`}>
+      <AppSidebar
+        page={page}
+        menuOpen={menuOpen}
+        settingsOpen={settingsOpen}
+        unreadNotifications={unreadNotifications}
+        visibleNavigation={visibleNavigation}
+        onCloseMenu={() => setMenuOpen(false)}
+        onToggleSettings={() => setSettingsOpen((value) => !value)}
+        onNavigate={(target) => {
+          setPage(target)
+          setSearch('')
+        }}
+        onLogout={() => void logout()}
+      />
+      <main className="main-panel">
+        <header className="topbar">
+          <button type="button" className="menu-toggle" aria-label="Afficher ou masquer le menu" onClick={() => setMenuOpen((value) => !value)}>
+            <Icon name="menu" />
+          </button>
+          <div className="topbar-title">
+            <h1>SCDIP-PNLP</h1>
+            <p>Système de collecte des données individuelles du paludisme</p>
+          </div>
+          <div className="top-actions">
+            <button
+              type="button"
+              className="icon-button"
+              title="Actualiser les données"
+              aria-label="Actualiser les données"
+              onClick={() => void loadData(token)}
+              disabled={loading}
+            >
+              <span className={loading ? 'spin' : ''}><Icon name="refresh" /></span>
+            </button>
+            <button
+              type="button"
+              className={`bell-button ${pushEnabled ? '' : 'is-off'}`}
+              onClick={() => {
+                if (pushEnabled) {
+                  void disablePush()
+                } else {
+                  void activatePush()
+                }
+              }}
+              disabled={pushBusy}
+              title={
+                pushEnabled
+                  ? 'Désactiver les notifications'
+                  : 'Activer les notifications'
+              }
+              aria-label={
+                pushEnabled
+                  ? 'Désactiver les notifications'
+                  : 'Activer les notifications'
+              }
+            >
+              <Icon name="bell" />
+              {unreadNotifications > 0 && (
+                <span className="bell-badge">{unreadNotifications > 99 ? '99+' : unreadNotifications}</span>
+              )}
+            </button>
+            <span className="top-divider" />
+            <div className="user-pill" ref={profileRef}>
+              <span className="user-avatar"><Icon name="user" /></span>
+              <span className="user-meta">
+                <strong>{user ? `${user.prenom} ${user.nom}` : 'Utilisateur'}</strong>
+                <small>{userRoleLabel}</small>
+              </span>
+              <button
+                type="button"
+                className={`user-chevron ${profileMenuOpen ? 'is-open' : ''}`}
+                aria-label="Ouvrir le menu du profil"
+                aria-haspopup="menu"
+                aria-expanded={profileMenuOpen}
+                onClick={() => setProfileMenuOpen((value) => !value)}
+              >
+                <Icon name="chevron" />
+              </button>
+              {profileMenuOpen && (
+                <div className="profile-menu" role="menu">
+                  <button type="button" role="menuitem" onClick={() => openAccountPage('profil')}>
+                    <Icon name="user" /> Profil
+                  </button>
+                  <button type="button" role="menuitem" onClick={() => openAccountPage('aide')}>
+                    <Icon name="help" /> Aide
+                  </button>
+                  <div className="profile-menu-sep" />
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="is-danger"
+                    onClick={() => { setProfileMenuOpen(false); void logout() }}
+                  >
+                    <Icon name="logout" /> Se déconnecter
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </header>
+        <div className="content">
+          {page !== 'dashboard' && (
+            <div className="page-heading">
+              <div>
+                <span className="eyebrow">SUIVI ET PILOTAGE</span>
+                <h1>{pageTitle}</h1>
+                <p className="muted">
+                  {pageSubtitles[page] ?? 'Consultez les structures administratives et sanitaires.'}
+                </p>
+              </div>
+              <div className="date-chip">{new Intl.DateTimeFormat('fr-FR', {
+                day: '2-digit', month: 'long', year: 'numeric',
+              }).format(new Date())}</div>
+            </div>
+          )}
+          {error && <div className="alert error">{error}</div>}
+          {page === 'dashboard' && (
+            <DashboardPage
+              fiches={fiches}
+              loading={loading}
+              busy={busy}
+              token={token}
+              role={user?.role || ''}
+              isSupervisor={isSupervisor}
+              unreadNotifications={unreadNotifications}
+              pushEnabled={pushEnabled}
+              regions={regions}
+              prefectures={prefectures}
+              communes={communes}
+              formations={formations}
+              onSetPage={setPage}
+              onSupervisorAction={handleSupervisorAction}
+              onRefresh={async () => {
+                await loadData(token)
+                setRefreshKey((value) => value + 1)
+              }}
+            />
+          )}
+          {page === 'fiches' && (
+            <FichesPage
+              token={token}
+              role={user?.role || ''}
+              fiches={pagedFiches}
+              loading={loading}
+              busy={busy}
+              search={search}
+              setSearch={setSearch}
+              pageOffset={pageOffset}
+              setPageOffset={setPageOffset}
+              pageSize={pageSize}
+              totalFiches={totalFiches}
+              showNewFiche={showNewFiche}
+              setShowNewFiche={setShowNewFiche}
+              onAction={handleSupervisorAction}
+              onRefresh={async () => {
+                await loadData(token)
+                setRefreshKey((value) => value + 1)
+              }}
+              onCreated={async () => {
+                setShowNewFiche(false)
+                setSearch('')
+                setPageOffset(0)
+                const refreshed = await api<PagedFiches>(
+                  '/api/v1/fiches/paginees?limit=10&offset=0',
+                  token,
+                )
+                setPagedFiches(refreshed.items)
+                setTotalFiches(refreshed.total)
+              }}
+            />
+          )}
+          {page === 'mailbox' && (
+            <Mailbox
+              token={token}
+              onUnreadCountChange={setUnreadNotifications}
+            />
+          )}
+          {page === 'users' && (
+            <UserCrud
+              token={token}
+              users={users}
+              regions={regions}
+              prefectures={prefectures}
+              communes={communes}
+              formations={formations}
+              currentUserId={user?.id}
+              onRefresh={async () => {
+                await loadData(token)
+              }}
+            />
+          )}
+          {page === 'structures' && (
+            <div className="structure-grid list-grid">
+              <StructurePanel title="Régions" items={regions} icon="map" />
+              <StructurePanel title="Préfectures" items={prefectures} icon="pin" />
+              <StructurePanel title="Communes" items={communes} icon="structures" />
+              <StructurePanel title="Formations sanitaires" items={formations} icon="hospital" />
+            </div>
+          )}
+          {page === 'journaux' && <ComingSoon icon="journal" text="Le journal des actions sera disponible ici." />}
+          {page === 'rapport' && <ComingSoon icon="bars" text="Les rapports seront disponibles ici." />}
+          {page === 'export' && <ComingSoon icon="download" text="L’export des données sera disponible ici." />}
+          {page === 'profil' && <ProfilePage user={user} roleLabel={userRoleLabel} />}
+          {page === 'aide' && <HelpPage />}
+          <footer className="footer"><span>SCDIP-PNLP</span><span>Collecte des données individuelles du paludisme</span></footer>
+        </div>
+      </main>
+    </div>
+  )
+}
+
+export default App

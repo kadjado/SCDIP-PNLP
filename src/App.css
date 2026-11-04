@@ -861,3 +861,113 @@ th{background:#f4f8fc}
   .lg-bottom{left:auto;top:auto;transform:none;margin:22px auto 0;flex-wrap:wrap;justify-content:center;font-size:12px}
   .lg-bottom span{padding:4px 14px}
 }
+
+/* ==========================================================================
+   Pages « liste » (fiches, structures sanitaires), menu Paramètres, menu du
+   profil, pages Profil / Aide. Ces règles sont limitées à ces écrans : le
+   tableau de bord (Fiches récentes, etc.) garde son style actuel.
+   ========================================================================== */
+
+/* ---------- Carte pleine largeur avec bandeau d'en-tête ---------- */
+.content .list-panel{width:100%;max-width:none;padding:0;overflow:hidden;background:#fff;border:1px solid #dbe5f3;border-radius:18px;box-shadow:0 1px 2px #102a6410,0 12px 30px #102a6412}
+.content .list-panel .panel-heading{margin:0;padding:20px 26px;gap:16px;flex-wrap:wrap;background:linear-gradient(100deg,#eaf2ff 0%,#eef8f3 100%);border-bottom:1px solid #dbe5f3}
+.list-heading-main{display:flex;align-items:center;gap:16px;min-width:0}
+.list-icon{flex:0 0 54px;width:54px;height:54px;display:grid;place-items:center;border-radius:15px;color:#fff;background:linear-gradient(135deg,#0e7a9a,#1fa65a);box-shadow:0 8px 18px #0a63b533}
+.list-icon svg{width:28px;height:28px}
+.content .list-panel .panel-heading h2{margin:0 0 4px;font-size:25px;font-weight:800;letter-spacing:-.3px;color:#0b2a6f}
+.content .list-panel .panel-heading .muted{margin:0;font-size:16px;color:#5f6f8f}
+
+/* ---------- Recherche et bouton « + » ---------- */
+.list-search{position:relative;display:flex;align-items:center;margin:0}
+.list-search>svg{position:absolute;left:18px;width:20px;height:20px;color:#4a6aa8;pointer-events:none}
+.content .list-panel .list-search .search-input{width:min(380px,100%);box-sizing:border-box;padding:12px 20px 12px 48px;font-size:16px;color:#0b2455;background:#fff;border:1px solid #bccbe3;border-radius:999px}
+.content .list-panel .list-search .search-input::placeholder{color:#6d7fa3}
+.content .list-panel .list-search .search-input:focus{border-color:#0a63b5;box-shadow:0 0 0 4px #0a63b526}
+.content .list-panel .nf-plus-button{background:linear-gradient(100deg,#0a63b5,#1fa65a);box-shadow:0 8px 18px #0a63b533}
+.content .list-panel .nf-plus-button:hover:not(:disabled){background:linear-gradient(100deg,#0a63b5,#1fa65a);filter:brightness(1.08)}
+
+/* Formulaire de nouvelle fiche affiché dans la carte */
+.content .fiches-panel>.nf-panel{width:auto;margin:22px 26px;padding:0}
+
+/* ---------- Tableau des fiches ---------- */
+.content .list-panel .table-wrap{padding:4px 10px 0;border-radius:0}
+.content .list-panel th{padding:16px 18px;background:#f4f8fd;color:#3d4f75;font-size:15px;font-weight:700;border-top:0;border-bottom:1px solid #dbe5f3}
+.content .list-panel td{padding:16px 18px;color:#34456b;border-bottom:1px solid #edf1f8}
+.content .list-panel td strong{color:#0b2a6f}
+.content .list-panel tbody tr:hover{background:#f5f9ff}
+.content .list-panel .secondary-button{color:#1d3f8f;font-weight:700;background:#fff;border:1px solid #bccbe3;border-radius:999px}
+.content .list-panel .secondary-button:hover:not(:disabled){background:#f1f6fd;border-color:#0a63b5}
+
+/* ---------- Pagination ---------- */
+.content .list-panel .pagination-controls{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:0;padding:16px 26px;color:#5f6f8f;font-size:15px;border-top:1px solid #dbe5f3}
+.content .list-panel .pagination-controls>div{display:flex;gap:10px}
+.content .list-panel .pagination-controls .secondary-button{padding:10px 22px;font-size:15px}
+
+/* ---------- État vide ---------- */
+.content .list-panel .empty-state{min-height:240px;gap:14px;padding:30px 20px;color:#5f6f8f}
+.content .list-panel .empty-state span{width:64px;height:64px;display:grid;place-items:center;font-size:28px;color:#fff;background:linear-gradient(135deg,#0e7a9a,#1fa65a);border-radius:50%}
+.content .list-panel .empty-state span svg{width:30px;height:30px}
+
+/* ---------- Structures sanitaires : 2 colonnes, 4 sur très grand écran ---------- */
+.content .structure-grid.list-grid{width:100%;gap:20px;grid-template-columns:repeat(auto-fit,minmax(min(100%,480px),1fr))}
+.content .list-grid .structure-list{padding:6px 26px 14px}
+.content .list-grid .structure-row{border-bottom:1px solid #edf1f8}
+.content .list-grid .structure-row:last-child{border-bottom:0}
+.content .list-grid .structure-row-icon{color:#0a63b5;background:#eaf2ff;border-radius:12px}
+.content .list-grid .structure-row-icon svg{width:24px;height:24px}
+.content .list-grid .structure-row strong{color:#0b2a6f}
+
+/* ---------- Menu latéral : Paramètres et sous-options ---------- */
+.nav-group{display:grid;gap:2px}
+.nav-parent.has-active{font-weight:700}
+.nav-caret{display:grid;place-items:center;color:inherit}
+.nav-caret svg{width:20px;height:20px;transform:rotate(-90deg);transition:transform .18s ease}
+.nav-caret.is-open svg{transform:none}
+.nav-submenu{display:grid;gap:2px;margin:0 0 6px 34px;padding-left:14px;border-left:2px solid #ffffff90}
+.nav-subitem{display:flex;align-items:center;gap:12px;width:100%;box-sizing:border-box;min-height:clamp(34px,5vh,46px);padding:0 14px;border:0;border-radius:10px;background:transparent;color:#14305a;font-size:clamp(13px,1.6vh,16px);text-align:left;transition:background .15s}
+.nav-subitem svg{width:20px;height:20px}
+.nav-subitem:hover{background:#ffffff40}
+.nav-subitem.active{background:#ffffff80;color:#0a47b8;font-weight:650}
+
+/* ---------- Menu du profil (flèche à côté du nom) ---------- */
+.user-pill{position:relative}
+.user-chevron{width:36px;height:36px;display:grid;place-items:center;padding:0;border:0;border-radius:50%;background:transparent;color:#16305a}
+.user-chevron:hover{background:#eaf1fa}
+.user-chevron svg{transition:transform .18s ease}
+.user-chevron.is-open svg{transform:rotate(180deg)}
+.profile-menu{position:absolute;top:calc(100% + 12px);right:0;z-index:90;min-width:240px;padding:8px;background:#fff;border:1px solid #dbe5f3;border-radius:14px;box-shadow:0 16px 40px #0b2a6f29}
+.profile-menu button{display:flex;align-items:center;gap:12px;width:100%;padding:12px 14px;border:0;border-radius:10px;background:transparent;color:#0b2455;font-size:16px;font-weight:500;text-align:left}
+.profile-menu button svg{width:20px;height:20px;color:#4a6aa8}
+.profile-menu button:hover{background:#eef4ff}
+.profile-menu button.is-danger{color:#c23a3a}
+.profile-menu button.is-danger svg{color:#c23a3a}
+.profile-menu button.is-danger:hover{background:#fff0f0}
+.profile-menu-sep{height:1px;margin:6px 8px;background:#e5ebf3}
+
+/* ---------- Pages Profil et Aide ---------- */
+.profile-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px 26px;margin:0;padding:26px}
+.profile-grid>div{padding:14px 16px;background:#f7f9fd;border:1px solid #dbe5f3;border-left:4px solid #0a63b5;border-radius:12px}
+.profile-grid dt{margin:0 0 4px;color:#5f6f8f;font-size:14px;font-weight:600}
+.profile-grid dd{margin:0;color:#0b2a6f;font-size:19px;font-weight:700;overflow-wrap:anywhere}
+.profile-grid dd.is-role{text-transform:capitalize}
+.help-list{display:grid;gap:12px;padding:26px}
+.help-list details{overflow:hidden;background:#fff;border:1px solid #dbe5f3;border-radius:14px}
+.help-list summary{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 20px;color:#0b2a6f;font-size:18px;font-weight:700;list-style:none;cursor:pointer}
+.help-list summary::-webkit-details-marker{display:none}
+.help-list summary::after{content:"";flex:0 0 auto;width:10px;height:10px;border-right:2px solid #4a6aa8;border-bottom:2px solid #4a6aa8;transform:rotate(45deg);transition:transform .15s ease}
+.help-list details[open] summary{background:linear-gradient(100deg,#eaf2ff,#eef8f3);border-bottom:1px solid #dbe5f3}
+.help-list details[open] summary::after{transform:rotate(-135deg)}
+.help-list details p{margin:0;padding:16px 20px;color:#34456b;font-size:17px;line-height:1.6}
+
+/* ---------- Mobile ---------- */
+@media(max-width:760px){
+  .content .list-panel .panel-heading{padding:16px}
+  .content .list-panel .panel-heading h2{font-size:21px}
+  .content .list-panel .nf-header-actions{width:100%}
+  .content .list-panel .list-search{flex:1}
+  .content .list-panel .list-search .search-input{width:100%}
+  .content .list-panel .pagination-controls{padding:14px 16px}
+  .content .fiches-panel>.nf-panel{margin:16px}
+  .content .list-grid .structure-list{padding:6px 16px 12px}
+  .profile-grid,.help-list{padding:16px}
+}

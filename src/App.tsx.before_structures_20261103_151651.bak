@@ -1,0 +1,843 @@
+﻿import { useCallback, useEffect, useRef, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
+import './App.css'
+import NewFicheForm from './NewFicheForm'
+import UserCrud from './UserCrud'
+import Mailbox from './Mailbox'
+import { useAuth } from './contexts/AuthContext'
+import { usePush } from './contexts/PushContext'
+import { useAppData } from './hooks/useAppData'
+import { useSupervisorActions } from './hooks/useSupervisorActions'
+import { useFichesPagination } from './hooks/useFichesPagination'
+import Icon from './components/shared/Icon'
+import KpiCard from './components/dashboard/KpiCard'
+import EvolutionPanel from './components/dashboard/EvolutionPanel'
+import DashboardHero from './components/dashboard/DashboardHero'
+import NotificationPanel from './components/dashboard/NotificationPanel'
+import PreventionBanner from './components/dashboard/PreventionBanner'
+import EmptyState from './components/shared/EmptyState'
+import FicheTable from './components/fiches/FicheTable'
+import { getMonthlyStats } from './utils/dashboardStats'
+import {
+  navigation,
+  settingsNavigation,
+  accountPages,
+  supervisorPages,
+  pageSubtitles,
+  pagePaths,
+  pathPages,
+} from './config/navigation'
+
+import type { Page } from './config/navigation'
+
+import { api } from './services/api'
+
+import type {
+  User,
+  PagedFiches,
+  Structure,
+} from './types'
+
+
+function App() {
+  const navigate = useNavigate()
+  const location = useLocation()
+
+  const {
+    token,
+    user,
+    setUser,
+    login,
+    clearSession,
+  } = useAuth()
+
+  const {
+    pushEnabled,
+    pushBusy,
+    unreadNotifications,
+    setUnreadNotifications,
+    activatePush,
+    disablePush,
+    disablePushForLogout,
+  } = usePush()
+
+  const page: Page = pathPages[location.pathname] || 'dashboard'
+
+  const setPage = useCallback((nextPage: Page) => {
+    navigate(pagePaths[nextPage])
+  }, [navigate])
+
+  useEffect(() => {
+    if (!token) {
+      if (location.pathname !== '/login') {
+        navigate('/login', { replace: true })
+      }
+      return
+    }
+
+    if (location.pathname === '/' || location.pathname === '/login') {
+      navigate('/dashboard', { replace: true })
+    }
+  }, [token, location.pathname, navigate])
+  const [refreshKey, setRefreshKey] = useState(0)
+  const isSupervisor = user?.role === 'superviseur'
+  const visibleNavigation = navigation.filter((item) => {
+    if (isSupervisor) {
+      return item.id === 'dashboard'
+        || item.id === 'fiches'
+        || item.id === 'mailbox'
+    }
+    return true
+  })
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [loginError, setLoginError] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [search, setSearch] = useState('')
+  const [pageOffset, setPageOffset] = useState(0)
+  const [showNewFiche, setShowNewFiche] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(() => typeof window === 'undefined' || window.innerWidth > 900)
+  const [settingsOpen, setSettingsOpen] = useState(() =>
+    settingsNavigation.some((item) => item.id === pathPages[location.pathname]),
+  )
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false)
+  const profileRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!profileMenuOpen) return
+    const onPointerDown = (event: MouseEvent) => {
+      if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
+        setProfileMenuOpen(false)
+      }
+    }
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setProfileMenuOpen(false)
+    }
+    document.addEventListener('mousedown', onPointerDown)
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown)
+      document.removeEventListener('keydown', onKeyDown)
+    }
+  }, [profileMenuOpen])
+  const pageSize = 10
+  const {
+    pagedFiches,
+    setPagedFiches,
+    totalFiches,
+    setTotalFiches,
+  } = useFichesPagination({
+    token,
+    page,
+    search,
+    pageOffset,
+    pageSize,
+    refreshKey,
+    setLoading,
+    setError,
+  })
+    const handleInvalidSession = useCallback(async () => {
+    await disablePushForLogout()
+    clearSession()
+  }, [disablePushForLogout, clearSession])
+
+  const {
+    fiches,
+    users,
+    regions,
+    prefectures,
+    communes,
+    formations,
+    loadData,
+    clearSessionData,
+  } = useAppData({
+    setUser,
+    setLoading,
+    setError,
+    onSessionInvalid: handleInvalidSession,
+  })
+  const { handleSupervisorAction } = useSupervisorActions({
+    token,
+    role: user?.role,
+    setBusy,
+    setError,
+    loadData,
+    onRefresh: () => setRefreshKey((value) => value + 1),
+  })
+  const logout = useCallback(async () => {
+    await handleInvalidSession()
+    clearSessionData()
+  }, [handleInvalidSession, clearSessionData])
+
+  useEffect(() => {
+    if (token) void loadData(token)
+  }, [token, loadData])
+
+  useEffect(() => {
+      if (
+  isSupervisor
+  && !supervisorPages.includes(page)
+) {
+      setPage('dashboard')
+    }
+  }, [isSupervisor, page])
+  async function handleLogin(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setBusy(true)
+    setLoginError('')
+
+    try {
+      await login(email.trim(), password)
+      setPassword('')
+    } catch (e) {
+      setLoginError(
+        e instanceof Error
+          ? e.message
+          : 'Impossible de contacter le serveur.',
+      )
+    } finally {
+      setBusy(false)
+    }
+  }
+  if (!token) {
+    return (
+      <main className="lg-page">
+        <section className="lg-left">
+          <div className="lg-stage">
+            <div className="lg-hero">
+              <svg className="lg-hero-bg" viewBox="0 0 880 799" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+                <defs>
+                  <linearGradient id="lgHeroGrad" x1="0" y1="0" x2="1" y2="0">
+                    <stop offset="0" stopColor="#04386f" />
+                    <stop offset=".36" stopColor="#08558a" />
+                    <stop offset=".6" stopColor="#177c78" />
+                    <stop offset=".8" stopColor="#4aa35a" />
+                    <stop offset="1" stopColor="#a9d6a0" />
+                  </linearGradient>
+                </defs>
+                <path d="M0,3 C180,40 360,62 520,46 C650,34 770,18 880,8 L880,799 L0,799 Z" fill="url(#lgHeroGrad)" />
+              </svg>
+              <img className="lg-hero-art" src="/scdip-hero-art.jpg" alt="" aria-hidden="true" />
+              <svg className="lg-hero-sw" viewBox="0 0 880 799" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+                <defs>
+                  <linearGradient id="lgLow" gradientUnits="userSpaceOnUse" x1="150" y1="0" x2="720" y2="0">
+                    <stop offset="0" stopColor="#063b72" stopOpacity="0" />
+                    <stop offset=".5" stopColor="#4f93c8" stopOpacity=".85" />
+                    <stop offset="1" stopColor="#d6e8f1" />
+                  </linearGradient>
+                  <linearGradient id="lgBlue" x1="0" y1="1" x2="1" y2="0">
+                    <stop offset="0" stopColor="#0a4a98" />
+                    <stop offset="1" stopColor="#2386cc" />
+                  </linearGradient>
+                  <linearGradient id="lgGreen" x1="0" y1="1" x2="1" y2="0">
+                    <stop offset="0" stopColor="#14a04b" />
+                    <stop offset="1" stopColor="#62c872" />
+                  </linearGradient>
+                </defs>
+                <path d="M120,799 C320,745 560,735 880,520 L880,799 Z" fill="url(#lgLow)" />
+                <path d="M250,640 C520,640 760,520 880,380 L880,445 C770,565 530,690 300,690 Z" fill="url(#lgBlue)" />
+                <path d="M300,694 C540,692 780,572 880,450" fill="none" stroke="#fff" strokeWidth="4" />
+                <path d="M330,700 C560,700 780,620 880,500 L880,560 C790,660 560,740 360,738 Z" fill="url(#lgGreen)" />
+              </svg>
+            </div>
+            <img className="lg-emblem" src="/scdip-embleme.png" alt="Emblème SCDIP-PNLP" />
+            <h1 className="lg-title">SCDIP<span>-PNLP</span></h1>
+            <p className="lg-sub">Système de collecte des données individuelles<br />du paludisme</p>
+            <div className="lg-prog">PROGRAMME NATIONAL DE LUTTE CONTRE LE PALUDISME</div>
+            <div className="lg-togo"><span /><em>TOGO</em><span /></div>
+            <h2 className="lg-h2">Ensemble contre<br />le <span>paludisme</span></h2>
+            <p className="lg-lead">Des données fiables pour une meilleure surveillance et une action plus efficace.</p>
+            <ul className="lg-features">
+              <li><span className="lg-feature-icon"><LoginIcon name="chart" /></span><div><strong>Collecte des données</strong><small>Rapide et sécurisée</small></div></li>
+              <li><span className="lg-feature-icon lg-green"><LoginIcon name="shieldCheck" /></span><div><strong>Suivi des cas</strong><small>À tous les niveaux</small></div></li>
+              <li><span className="lg-feature-icon"><LoginIcon name="people" /></span><div><strong>Meilleure coordination</strong><small>Entre les acteurs de santé</small></div></li>
+              <li><span className="lg-feature-icon lg-green"><LoginIcon name="pin" /></span><div><strong>Un Togo sans paludisme</strong><small>C’est possible !</small></div></li>
+            </ul>
+            <img className="lg-flag" src="/scdip-drapeau.png" alt="" aria-hidden="true" />
+            <p className="lg-slogan">Un Togo sans paludisme, c’est possible !</p>
+          </div>
+        </section>
+        <section className="lg-right">
+          <div className="lg-rstage">
+            <LoginIcon name="hexagons" />
+            <div className="lg-hex-b"><LoginIcon name="hexagons" /></div>
+            <form className="lg-card" onSubmit={handleLogin}>
+              <img className="lg-card-logo" src="/scdip-embleme.png" alt="Emblème SCDIP-PNLP" />
+              <h2>Bienvenue</h2>
+              <p className="lg-card-sub">Connectez-vous à votre compte</p>
+              <div className="lg-field">
+                <span className="lg-field-icon"><LoginIcon name="user" /></span>
+                <input id="email" type="text" autoComplete="username" value={email}
+                  onChange={(e) => setEmail(e.target.value)} placeholder="Identifiant (e-mail ou nom d’utilisateur)" aria-label="Identifiant" required />
+              </div>
+              <div className="lg-field">
+                <span className="lg-field-icon"><LoginIcon name="lock" /></span>
+                <input id="password" type={showPassword ? 'text' : 'password'} autoComplete="current-password" value={password}
+                  onChange={(e) => setPassword(e.target.value)} placeholder="Mot de passe" aria-label="Mot de passe" required />
+                <button type="button" className="lg-eye" aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+                  onClick={() => setShowPassword((value) => !value)}>
+                  <LoginIcon name={showPassword ? 'eye' : 'eyeOff'} />
+                </button>
+              </div>
+              {loginError && <div className="alert error">{loginError}</div>}
+              {error && <div className="alert error">{error}</div>}
+              <button type="submit" className="lg-submit" disabled={busy}>
+                <LoginIcon name="login" /> {busy ? 'Connexion en cours…' : 'Se connecter'}
+              </button>
+              <div className="lg-options">
+                <label className="lg-remember"><input type="checkbox" /> Se souvenir de moi</label>
+                <a href="#" className="lg-forgot" onClick={(e) => { e.preventDefault(); window.alert('Veuillez contacter l’administrateur du système pour réinitialiser votre mot de passe.') }}>Mot de passe oublié ?</a>
+              </div>
+              <div className="lg-card-foot">
+                <LoginIcon name="shieldCheck" />
+                <div><strong>SCDIP-PNLP</strong><span>Programme National de Lutte contre le Paludisme</span><span>Togo</span></div>
+              </div>
+            </form>
+            <div className="lg-bottom">
+              <span><LoginIcon name="shield" /> Données fiables</span>
+              <span><LoginIcon name="people" /> Communautés en bonne santé</span>
+              <span><LoginIcon name="leaf" /> Un Togo sans paludisme</span>
+            </div>
+          </div>
+        </section>
+        <div className="lg-stripe" />
+      </main>
+    )
+  }
+
+  const pageTitle = [...navigation, ...settingsNavigation, ...accountPages]
+    .find((item) => item.id === page)?.label || 'Tableau de bord'
+  const monthlyStats = getMonthlyStats(fiches)
+  const currentMonth = monthlyStats[monthlyStats.length - 1]
+  const previousMonth = monthlyStats[monthlyStats.length - 2]
+  const validatedCount = fiches.filter((f) => f.validation_confirmee).length
+  const structuresCount = isSupervisor
+    ? new Set(fiches.map((f) => f.formation_sanitaire_id)).size
+    : formations.length
+  const userRoleLabel = (user?.role || 'Compte connecté').replace(/_/g, ' ')
+  const closeMenuOnMobile = () => {
+    if (typeof window !== 'undefined' && window.innerWidth <= 900) setMenuOpen(false)
+  }
+  const openAccountPage = (target: 'profil' | 'aide') => {
+    setProfileMenuOpen(false)
+    setSearch('')
+    setPage(target)
+  }
+  return (
+    <div className={`app-shell ${menuOpen ? '' : 'menu-closed'}`}>
+      <div className="sidebar-backdrop" onClick={() => setMenuOpen(false)} />
+      <aside className="sidebar">
+        <div className="sidebar-brand">
+          <img className="sidebar-emblem" src="/scdip-embleme.png" alt="Emblème SCDIP-PNLP" />
+          <div className="sidebar-wordmark">
+            <img src="/scdip-embleme.png" alt="" />
+            <strong>SCDIP<span>-PNLP</span></strong>
+          </div>
+          <small>Ensemble contre le paludisme</small>
+        </div>
+        <nav>
+          {visibleNavigation.map((item) => (
+            <button key={item.id} className={`nav-item ${page === item.id ? 'active' : ''}`}
+              onClick={() => { setPage(item.id); setSearch(''); closeMenuOnMobile() }}>
+              <span className="nav-icon"><Icon name={item.icon} /></span>
+              <span className="nav-label">{item.label}</span>
+              {item.id === 'mailbox' && unreadNotifications > 0 && (
+                <span className="notification-badge">
+                  {unreadNotifications > 99 ? '99+' : unreadNotifications}
+                </span>
+              )}
+            </button>
+          ))}
+          <div className="nav-group">
+            <button
+              type="button"
+              className={`nav-item nav-parent ${settingsNavigation.some((item) => item.id === page) ? 'has-active' : ''}`}
+              aria-expanded={settingsOpen}
+              aria-controls="settings-submenu"
+              onClick={() => setSettingsOpen((value) => !value)}
+            >
+              <span className="nav-icon"><Icon name="settings" /></span>
+              <span className="nav-label">Paramètres</span>
+              <span className={`nav-caret ${settingsOpen ? 'is-open' : ''}`}><Icon name="chevron" /></span>
+            </button>
+            {settingsOpen && (
+              <div className="nav-submenu" id="settings-submenu">
+                {settingsNavigation.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className={`nav-subitem ${page === item.id ? 'active' : ''}`}
+                    onClick={() => { setPage(item.id); setSearch(''); closeMenuOnMobile() }}
+                  >
+                    <Icon name={item.icon} />
+                    <span>{item.label}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </nav>
+        <div className="nav-separator" />
+        <button className="nav-item nav-logout" title="Se déconnecter" onClick={logout}>
+          <span className="nav-icon"><Icon name="logout" /></span>
+          <span className="nav-label">Déconnexion</span>
+        </button>
+        <div className="sidebar-bottom">
+          <p className="sidebar-slogan">Un Togo sans paludisme,<br />c’est possible !</p>
+          <img className="sidebar-flag" src="/scdip-drapeau.png" alt="" />
+        </div>
+      </aside>
+      <main className="main-panel">
+        <header className="topbar">
+          <button type="button" className="menu-toggle" aria-label="Afficher ou masquer le menu" onClick={() => setMenuOpen((value) => !value)}>
+            <Icon name="menu" />
+          </button>
+          <div className="topbar-title">
+            <h1>SCDIP-PNLP</h1>
+            <p>Système de collecte des données individuelles du paludisme</p>
+          </div>
+          <div className="top-actions">
+            <button
+              type="button"
+              className="icon-button"
+              title="Actualiser les données"
+              aria-label="Actualiser les données"
+              onClick={() => void loadData(token)}
+              disabled={loading}
+            >
+              <span className={loading ? 'spin' : ''}><Icon name="refresh" /></span>
+            </button>
+            <button
+              type="button"
+              className={`bell-button ${pushEnabled ? '' : 'is-off'}`}
+              onClick={() => {
+                if (pushEnabled) {
+                  void disablePush()
+                } else {
+                  void activatePush()
+                }
+              }}
+              disabled={pushBusy}
+              title={
+                pushEnabled
+                  ? 'Désactiver les notifications'
+                  : 'Activer les notifications'
+              }
+              aria-label={
+                pushEnabled
+                  ? 'Désactiver les notifications'
+                  : 'Activer les notifications'
+              }
+            >
+              <Icon name="bell" />
+              {unreadNotifications > 0 && (
+                <span className="bell-badge">{unreadNotifications > 99 ? '99+' : unreadNotifications}</span>
+              )}
+            </button>
+            <span className="top-divider" />
+            <div className="user-pill" ref={profileRef}>
+              <span className="user-avatar"><Icon name="user" /></span>
+              <span className="user-meta">
+                <strong>{user ? `${user.prenom} ${user.nom}` : 'Utilisateur'}</strong>
+                <small>{userRoleLabel}</small>
+              </span>
+              <button
+                type="button"
+                className={`user-chevron ${profileMenuOpen ? 'is-open' : ''}`}
+                aria-label="Ouvrir le menu du profil"
+                aria-haspopup="menu"
+                aria-expanded={profileMenuOpen}
+                onClick={() => setProfileMenuOpen((value) => !value)}
+              >
+                <Icon name="chevron" />
+              </button>
+              {profileMenuOpen && (
+                <div className="profile-menu" role="menu">
+                  <button type="button" role="menuitem" onClick={() => openAccountPage('profil')}>
+                    <Icon name="user" /> Profil
+                  </button>
+                  <button type="button" role="menuitem" onClick={() => openAccountPage('aide')}>
+                    <Icon name="help" /> Aide
+                  </button>
+                  <div className="profile-menu-sep" />
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="is-danger"
+                    onClick={() => { setProfileMenuOpen(false); void logout() }}
+                  >
+                    <Icon name="logout" /> Se déconnecter
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </header>
+        <div className="content">
+          {page !== 'dashboard' && (
+            <div className="page-heading">
+              <div>
+                <span className="eyebrow">SUIVI ET PILOTAGE</span>
+                <h1>{pageTitle}</h1>
+                <p className="muted">
+                  {pageSubtitles[page] ?? 'Consultez les structures administratives et sanitaires.'}
+                </p>
+              </div>
+              <div className="date-chip">{new Intl.DateTimeFormat('fr-FR', {
+                day: '2-digit', month: 'long', year: 'numeric',
+              }).format(new Date())}</div>
+            </div>
+          )}
+          {error && <div className="alert error">{error}</div>}
+          {page === 'dashboard' && (
+            <>
+              <DashboardHero onSeeDashboard={() => document.getElementById('dashboard-stats')?.scrollIntoView({ behavior: 'smooth', block: 'start' })} />
+              <div className="kpi-grid" id="dashboard-stats">
+                <KpiCard
+                  tone="blue"
+                  icon="clipboard"
+                  label={<>Fiches saisies<br />ce mois</>}
+                  value={currentMonth.total}
+                  current={currentMonth.total}
+                  previous={previousMonth.total}
+                  series={monthlyStats.map((item) => item.total)}
+                />
+                <KpiCard
+                  tone="green"
+                  icon="check"
+                  label="Fiches validées"
+                  value={validatedCount}
+                  current={currentMonth.validated}
+                  previous={previousMonth.validated}
+                  series={monthlyStats.map((item) => item.validated)}
+                />
+                <KpiCard
+                  tone="orange"
+                  icon="bell"
+                  label={<>Notifications<br />non lues</>}
+                  value={unreadNotifications}
+                  onClick={() => setPage('mailbox')}
+                />
+                <KpiCard
+                  tone="violet"
+                  icon="hospital"
+                  label="Structures sanitaires"
+                  value={structuresCount}
+                  onClick={isSupervisor ? undefined : () => setPage('structures')}
+                />
+              </div>
+              <div className="dashboard-insights">
+                <EvolutionPanel fiches={fiches} />
+                <NotificationPanel
+                  unread={unreadNotifications}
+                  pushEnabled={pushEnabled}
+                  fiches={fiches}
+                  onOpenMailbox={() => setPage('mailbox')}
+                />
+              </div>
+              <PreventionBanner />
+              <section className="panel recent-panel">
+                <div className="panel-heading">
+                  <div><h2>Fiches récentes</h2><p className="muted">Dernières fiches retournées par le serveur</p></div>
+                  <button className="text-button" onClick={() => setPage('fiches')}>Voir les fiches <span>→</span></button>
+                </div>
+                <FicheTable
+                  fiches={fiches.slice(0, 6)}
+                  loading={loading}
+                  role={user?.role || ''}
+                  busy={busy}
+                  onAction={handleSupervisorAction}
+                  token={token}
+                  onRefresh={async () => {
+                    await loadData(token)
+                    setRefreshKey((value) => value + 1)
+                  }}
+                />
+              </section>
+              {isSupervisor ? (
+                <section className="panel">
+                  <div className="panel-heading">
+                    <div>
+                      <h2>Votre espace de supervision</h2>
+                      <p className="muted">
+                        Examinez les fiches de votre périmètre, demandez des corrections
+                        et validez les fiches conformes.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className="primary-button"
+                    onClick={() => setPage('fiches')}
+                  >
+                    Accéder aux fiches <span>→</span>
+                  </button>
+                </section>
+              ) : (
+                <div className="bottom-grid">
+                  <section className="panel">
+                    <div className="panel-heading">
+                      <div>
+                        <h2>Structures administratives</h2>
+                        <p className="muted">Données disponibles via l’API</p>
+                      </div>
+                    </div>
+                    <div className="structure-list">
+                      <StructureRow label="Régions" count={regions.length} icon="◈" />
+                      <StructureRow label="Préfectures" count={prefectures.length} icon="⌖" />
+                      <StructureRow label="Communes" count={communes.length} icon="⌂" />
+                      <StructureRow label="Formations sanitaires" count={formations.length} icon="✚" />
+                    </div>
+                  </section>
+                  <section className="panel access-panel">
+                    <div className="panel-heading">
+                      <div>
+                        <h2>Accès rapide</h2>
+                        <p className="muted">Gestion des données</p>
+                      </div>
+                    </div>
+                    <button className="quick-link" onClick={() => setPage('fiches')}>
+                      <span className="quick-icon blue">▤</span>
+                      <span>
+                        <strong>Consulter les fiches</strong>
+                        <small>Accéder aux données de collecte</small>
+                      </span>
+                      <b>→</b>
+                    </button>
+                    <button className="quick-link" onClick={() => setPage('users')}>
+                      <span className="quick-icon violet">♙</span>
+                      <span>
+                        <strong>Utilisateurs</strong>
+                        <small>Voir les comptes accessibles</small>
+                      </span>
+                      <b>→</b>
+                    </button>
+                    <button className="quick-link" onClick={() => setPage('structures')}>
+                      <span className="quick-icon green">⌂</span>
+                      <span>
+                        <strong>Structures</strong>
+                        <small>Voir les structures sanitaires</small>
+                      </span>
+                      <b>→</b>
+                    </button>
+                  </section>
+                </div>
+              )}
+            </>
+          )}
+          {page === 'fiches' && (
+            <section className="panel list-panel fiches-panel">
+              <div className="panel-heading list-heading">
+                <div className="list-heading-main">
+                  <span className="list-icon"><Icon name="fiches" /></span>
+                  <div>
+                    <h2>Registre des fiches</h2>
+                    <p className="muted">
+                      {totalFiches} fiche(s) au total
+                      {totalFiches > 0
+                        ? ` — ${pageOffset + 1}–${Math.min(pageOffset + pageSize, totalFiches)} affichée(s)`
+                        : ''}
+                    </p>
+                  </div>
+                </div>
+                <div className="nf-header-actions">
+                  <label className="list-search">
+                    <Icon name="search" />
+                    <input
+                      className="search-input"
+                      value={search}
+                      onChange={(e) => {
+                        setSearch(e.target.value)
+                        setPageOffset(0)
+                      }}
+                      placeholder="Rechercher une fiche…"
+                      aria-label="Rechercher une fiche"
+                    />
+                  </label>
+                {user?.role === 'agent_fs' && (
+                  <button type="button" className="nf-plus-button" aria-label="Créer une nouvelle fiche" title="Nouvelle fiche paludisme" onClick={() => setShowNewFiche((value) => !value)}>{showNewFiche ? '×' : '+'}</button>
+                )}
+              </div>
+              </div>
+              {showNewFiche && user?.role === 'agent_fs' && token && (
+                <NewFicheForm
+                  token={token}
+                  onCancel={() => setShowNewFiche(false)}
+                  onCreated={async () => {
+                    setShowNewFiche(false)
+                    setSearch('')
+                    setPageOffset(0)
+                    const refreshed = await api<PagedFiches>('/api/v1/fiches/paginees?limit=10&offset=0', token)
+                    setPagedFiches(refreshed.items)
+                    setTotalFiches(refreshed.total)
+                  }}
+                />
+              )}
+              <FicheTable
+                fiches={pagedFiches}
+                loading={loading}
+                role={user?.role || ''}
+                busy={busy}
+                onAction={handleSupervisorAction}
+                token={token}
+                onRefresh={async () => {
+                  await loadData(token)
+                  setRefreshKey((value) => value + 1)
+                }}
+              />
+              <div className="table-foot pagination-controls">
+                <span>
+                  Page {Math.floor(pageOffset / pageSize) + 1} sur {Math.max(1, Math.ceil(totalFiches / pageSize))}
+                </span>
+                <div>
+                  <button type="button" className="secondary-button"
+                    disabled={loading || pageOffset === 0}
+                    onClick={() => setPageOffset((offset) => Math.max(0, offset - pageSize))}>
+                    Précédent
+                  </button>
+                  <button type="button" className="secondary-button"
+                    disabled={loading || pageOffset + pageSize >= totalFiches}
+                    onClick={() => setPageOffset((offset) => offset + pageSize)}>
+                    Suivant
+                  </button>
+                </div>
+              </div>
+            </section>
+          )}
+          {page === 'mailbox' && (
+            <Mailbox
+              token={token}
+              onUnreadCountChange={setUnreadNotifications}
+            />
+          )}
+          {page === 'users' && (
+            <UserCrud
+              token={token}
+              users={users}
+              regions={regions}
+              prefectures={prefectures}
+              communes={communes}
+              formations={formations}
+              currentUserId={user?.id}
+              onRefresh={async () => {
+                await loadData(token)
+              }}
+            />
+          )}
+          {page === 'structures' && (
+            <div className="structure-grid list-grid">
+              <StructurePanel title="Régions" items={regions} icon="map" />
+              <StructurePanel title="Préfectures" items={prefectures} icon="pin" />
+              <StructurePanel title="Communes" items={communes} icon="structures" />
+              <StructurePanel title="Formations sanitaires" items={formations} icon="hospital" />
+            </div>
+          )}
+          {page === 'journaux' && <ComingSoon icon="journal" text="Le journal des actions sera disponible ici." />}
+          {page === 'rapport' && <ComingSoon icon="bars" text="Les rapports seront disponibles ici." />}
+          {page === 'export' && <ComingSoon icon="download" text="L’export des données sera disponible ici." />}
+          {page === 'profil' && <ProfilePage user={user} roleLabel={userRoleLabel} />}
+          {page === 'aide' && <HelpPage />}
+          <footer className="footer"><span>SCDIP-PNLP</span><span>Collecte des données individuelles du paludisme</span></footer>
+        </div>
+      </main>
+    </div>
+  )
+}
+
+function LoginIcon({ name }: { name: string }) {
+  const s = { fill: 'none', stroke: 'currentColor', strokeWidth: 1.9, strokeLinecap: 'round', strokeLinejoin: 'round' } as const
+  const c = { viewBox: '0 0 24 24', 'aria-hidden': true, focusable: false } as const
+  switch (name) {
+    case 'user': return <svg {...c} {...s}><circle cx="12" cy="8" r="3.6" /><path d="M4.8 20c0-3.9 3.2-6.2 7.2-6.2s7.2 2.3 7.2 6.2" /></svg>
+    case 'lock': return <svg {...c} fill="currentColor"><path d="M8 10V7.6a4 4 0 0 1 8 0V10h.8c1 0 1.7.8 1.7 1.7v7.1c0 1-.8 1.7-1.7 1.7H7.2c-1 0-1.7-.8-1.7-1.7v-7.1c0-1 .8-1.7 1.7-1.7zm2 0h4V7.6a2 2 0 0 0-4 0z" /></svg>
+    case 'eye': return <svg {...c} {...s}><path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12z" /><circle cx="12" cy="12" r="3" /></svg>
+    case 'eyeOff': return <svg {...c} {...s}><path d="M2 12s3.6-6.5 10-6.5c2 0 3.7.6 5.1 1.5M22 12s-3.6 6.5-10 6.5c-2 0-3.7-.6-5.1-1.5" /><circle cx="12" cy="12" r="3" /><path d="m3.5 3.5 17 17" /></svg>
+    case 'login': return <svg {...c} {...s}><path d="M14 4h4.2A1.8 1.8 0 0 1 20 5.8v12.4a1.8 1.8 0 0 1-1.8 1.8H14" /><path d="M4 12h11M11.5 8l4 4-4 4" /></svg>
+    case 'chart': return <svg {...c} fill="currentColor"><rect x="4" y="11" width="4" height="9" rx="1" /><rect x="10" y="4" width="4" height="16" rx="1" /><rect x="16" y="8" width="4" height="12" rx="1" /></svg>
+    case 'shieldCheck': return <svg {...c} {...s}><path d="M12 3 5 5.6v6c0 4.4 3 7.6 7 9.4 4-1.8 7-5 7-9.4v-6z" /><path d="m8.8 12.2 2.2 2.2 4.2-4.6" /></svg>
+    case 'shield': return <svg {...c} {...s}><path d="M12 3 5 5.6v6c0 4.4 3 7.6 7 9.4 4-1.8 7-5 7-9.4v-6z" /><path d="m9 12 2.2 2.2L15.2 10" /></svg>
+    case 'people': return <svg {...c} fill="currentColor"><circle cx="12" cy="8" r="3.2" /><circle cx="5.2" cy="9.6" r="2.4" /><circle cx="18.8" cy="9.6" r="2.4" /><path d="M6.2 19.5c0-3.3 2.6-5.6 5.8-5.6s5.8 2.3 5.8 5.6z" /><path d="M1.8 18c0-2.3 1.6-4 3.8-4 .9 0 1.7.3 2.3.7-1.1 1-1.8 2.3-2 3.3z" opacity=".85" /><path d="M22.2 18c0-2.3-1.6-4-3.8-4-.9 0-1.7.3-2.3.7 1.1 1 1.8 2.3 2 3.3z" opacity=".85" /></svg>
+    case 'pin': return <svg {...c} {...s}><path d="M12 21s6.5-5.7 6.5-11A6.5 6.5 0 0 0 5.5 10c0 5.3 6.5 11 6.5 11z" /><circle cx="12" cy="10" r="2.4" /></svg>
+    case 'leaf': return <svg {...c} {...s}><path d="M5 19c0-8 5-13 15-14 0 9-4 14-12 14" /><path d="M5 19c2-4 5-7 9-9" /></svg>
+    case 'hexagons': return <svg className="lg-hex" viewBox="0 0 220 220" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" strokeWidth="1.2"><path d="M150 10l30 17v35l-30 17-30-17V27z" /><path d="M180 62l30 17v35l-30 17-30-17V79z" /><path d="M120 62l30 17v35l-30 17-30-17V79z" /><circle cx="60" cy="40" r="4" fill="currentColor" /><circle cx="95" cy="22" r="3" fill="currentColor" /><circle cx="200" cy="170" r="3" fill="currentColor" /></svg>
+    default: return null
+  }
+}
+
+function StructureRow({ label, count, icon }: { label: string; count: number; icon: string }) {
+  return <div className="structure-row"><span className="structure-row-icon">{icon}</span><span>{label}</span><strong>{count}</strong></div>
+}
+
+function StructurePanel({ title, items, icon }: { title: string; items: Structure[]; icon: string }) {
+  return (
+    <section className="panel structure-panel list-panel">
+      <div className="panel-heading list-heading">
+        <div className="list-heading-main">
+          <span className="list-icon"><Icon name={icon} /></span>
+          <div><h2>{title}</h2><p className="muted">{items.length} élément(s) chargé(s)</p></div>
+        </div>
+      </div>
+      {!items.length ? <EmptyState text="Aucune donnée retournée ou accès indisponible." /> : (
+        <div className="structure-list">
+          {items.map((item) => (
+            <div className="structure-row" key={item.id}>
+              <span className="structure-row-icon"><Icon name={icon} /></span>
+              <span><strong>{item.libelle}</strong><small className="cell-sub">{item.code}</small></span>
+              {item.actif !== undefined && <span className={`status ${item.actif ? 'confirmed' : 'inactive'}`}>{item.actif ? 'Actif' : 'Inactif'}</span>}
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  )
+}
+
+function ComingSoon({ icon, text }: { icon: string; text: string }) {
+  return (
+    <section className="panel list-panel">
+      <div className="empty-state">
+        <span><Icon name={icon} /></span>
+        <p>{text}</p>
+      </div>
+    </section>
+  )
+}
+
+function ProfilePage({ user, roleLabel }: { user: User | null; roleLabel: string }) {
+  return (
+    <section className="panel list-panel">
+      <dl className="profile-grid">
+        <div><dt>Prénom</dt><dd>{user?.prenom || '—'}</dd></div>
+        <div><dt>Nom</dt><dd>{user?.nom || '—'}</dd></div>
+        <div><dt>Adresse e-mail</dt><dd>{user?.email || '—'}</dd></div>
+        <div><dt>Rôle</dt><dd className="is-role">{roleLabel}</dd></div>
+      </dl>
+    </section>
+  )
+}
+
+function HelpPage() {
+  const questions = [
+    ['Comment consulter les fiches ?', 'Ouvrez « Fiches paludisme » dans le menu. La barre de recherche permet de retrouver une fiche, et les boutons Précédent et Suivant de parcourir les pages.'],
+    ['Comment créer une fiche ?', 'Les agents de formation sanitaire utilisent le bouton + en haut du registre des fiches, remplissent le formulaire, puis cliquent sur « Enregistrer la fiche ».'],
+    ['Comment valider une fiche ?', 'Les superviseurs disposent des actions Valider, Demander correction et Traiter réponse dans la colonne Actions du registre des fiches.'],
+    ['Comment activer les notifications ?', 'Cliquez sur la cloche en haut à droite pour activer ou désactiver les notifications sur cet appareil. Les messages non lus apparaissent dans la Messagerie.'],
+    ['J’ai oublié mon mot de passe.', 'Veuillez contacter l’administrateur du système pour réinitialiser votre mot de passe.'],
+  ]
+  return (
+    <section className="panel list-panel">
+      <div className="help-list">
+        {questions.map(([question, answer]) => (
+          <details key={question}>
+            <summary>{question}</summary>
+            <p>{answer}</p>
+          </details>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+export default App

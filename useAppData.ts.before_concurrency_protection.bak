@@ -1,0 +1,145 @@
+
+import { useCallback, useState } from 'react'
+import { api, ApiError } from '../services/api'
+import type { User, Fiche, Structure } from '../types'
+
+type UseAppDataOptions = {
+  setUser: (user: User | null) => void
+  setLoading: (loading: boolean) => void
+  setError: (error: string) => void
+  onSessionInvalid: () => Promise<void>
+}
+
+export function useAppData({
+  setUser,
+  setLoading,
+  setError,
+  onSessionInvalid,
+}: UseAppDataOptions) {
+  const [fiches, setFiches] = useState<Fiche[]>([])
+  const [users, setUsers] = useState<User[]>([])
+  const [regions, setRegions] = useState<Structure[]>([])
+  const [prefectures, setPrefectures] = useState<Structure[]>([])
+  const [communes, setCommunes] = useState<Structure[]>([])
+  const [formations, setFormations] = useState<Structure[]>([])
+
+  const clearSessionData = useCallback(() => {
+    setFiches([])
+    setUsers([])
+    setRegions([])
+    setPrefectures([])
+    setCommunes([])
+    setFormations([])
+  }, [])
+
+  const loadData = useCallback(async (activeToken: string) => {
+    if (!activeToken) return
+
+    setLoading(true)
+    setError('')
+
+    try {
+      let me: User
+
+      try {
+        me = await api<User>('/api/v1/auth/me', activeToken)
+      } catch (error) {
+        if (error instanceof ApiError && error.status === 401) {
+          await onSessionInvalid()
+          return
+        }
+
+        throw error
+      }
+
+      setUser(me)
+
+      if (me.role === 'superviseur') {
+        setUsers([])
+        setRegions([])
+        setPrefectures([])
+        setCommunes([])
+        setFormations([])
+
+        const supervisorFiches = await api<Fiche[]>(
+          '/api/v1/fiches?limit=50&offset=0',
+          activeToken,
+        )
+
+        setFiches(supervisorFiches)
+        return
+      }
+
+      const results = await Promise.allSettled([
+        api<Fiche[]>('/api/v1/fiches?limit=50&offset=0', activeToken),
+        api<User[]>('/api/v1/admin/users?limit=100&offset=0', activeToken),
+        api<Structure[]>('/api/v1/admin/structures/regions', activeToken),
+        api<Structure[]>('/api/v1/admin/structures/prefectures', activeToken),
+        api<Structure[]>('/api/v1/admin/structures/communes', activeToken),
+        api<Structure[]>(
+          '/api/v1/admin/structures/formations-sanitaires',
+          activeToken,
+        ),
+      ])
+
+      const errors: string[] = []
+
+      const setters = [
+        (value: Fiche[]) => setFiches(value),
+        (value: User[]) => setUsers(value),
+        (value: Structure[]) => setRegions(value),
+        (value: Structure[]) => setPrefectures(value),
+        (value: Structure[]) => setCommunes(value),
+        (value: Structure[]) => setFormations(value),
+      ]
+
+      const labels = [
+        'fiches',
+        'utilisateurs',
+        'régions',
+        'préfectures',
+        'communes',
+        'formations sanitaires',
+      ]
+
+      results.forEach((result, index) => {
+        if (result.status === 'fulfilled') {
+          setters[index](result.value as never)
+        } else {
+          errors.push(
+            `Chargement des ${labels[index]} impossible : ${
+              result.reason instanceof Error
+                ? result.reason.message
+                : String(result.reason)
+            }`,
+          )
+        }
+      })
+
+      if (errors.length > 0) {
+        setError(errors.join('\n'))
+      }
+    } catch (error) {
+      setError(
+        error instanceof Error
+          ? error.message
+          : 'Une erreur est survenue pendant le chargement des données.',
+      )
+    } finally {
+      setLoading(false)
+    }
+  }, [setUser, setLoading, setError, onSessionInvalid])
+
+  return {
+    fiches,
+    setFiches,
+    users,
+    setUsers,
+    regions,
+    prefectures,
+    communes,
+    formations,
+    loadData,
+    clearSessionData,
+  }
+}

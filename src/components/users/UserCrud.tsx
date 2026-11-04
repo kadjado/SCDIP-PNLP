@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+﻿import { useMemo, useState } from 'react'
 import './UserCrud.css'
 
 const API = (import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000' || 'http://localhost:8000').replace(/\/$/, '')
@@ -88,7 +88,7 @@ async function api<T>(
           .join(' ')
       }
     } catch {
-      // La réponse n'est pas du JSON.
+      // La rÃ©ponse n'est pas du JSON.
     }
 
     throw new Error(message)
@@ -266,7 +266,7 @@ export default function UserCrud({
 
     try {
       if (mode === 'create' && form.password.length < 12) {
-        throw new Error('Le mot de passe doit contenir au moins 12 caractères.')
+        throw new Error('Le mot de passe doit contenir au moins 12 caractÃ¨res.')
       }
 
       const data = payload()
@@ -276,7 +276,7 @@ export default function UserCrud({
           method: 'POST',
           body: JSON.stringify(data),
         })
-        setNotice('Utilisateur créé avec succès.')
+        setNotice('Utilisateur crÃ©Ã© avec succÃ¨s.')
       } else if (selected) {
         if (!form.password.trim()) delete data.password
 
@@ -284,7 +284,7 @@ export default function UserCrud({
           method: 'PATCH',
           body: JSON.stringify(data),
         })
-        setNotice('Utilisateur modifié avec succès.')
+        setNotice('Utilisateur modifiÃ© avec succÃ¨s.')
       }
 
       setMode(null)
@@ -300,7 +300,7 @@ export default function UserCrud({
 
   async function toggleActive(user: User) {
     if (user.id === currentUserId && user.actif !== false) {
-      setError('Vous ne pouvez pas désactiver votre propre compte.')
+      setError('Vous ne pouvez pas dÃ©sactiver votre propre compte.')
       return
     }
 
@@ -327,7 +327,7 @@ export default function UserCrud({
         })
       }
 
-      setNotice(activating ? 'Compte réactivé.' : 'Compte désactivé.')
+      setNotice(activating ? 'Compte rÃ©activÃ©.' : 'Compte dÃ©sactivÃ©.')
       await onRefresh()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Impossible de modifier le statut.')
@@ -338,7 +338,7 @@ export default function UserCrud({
 
   async function deleteUser(user: User) {
     if (!window.confirm(
-      `Supprimer définitivement le compte de ${user.prenom} ${user.nom} (ID ${user.id}) ? Cette action peut être irréversible.`,
+      `Supprimer dÃ©finitivement le compte de ${user.prenom} ${user.nom} (ID ${user.id}) ? Cette action peut Ãªtre irrÃ©versible.`,
     )) return
 
     setBusy(true)
@@ -350,7 +350,7 @@ export default function UserCrud({
         method: 'DELETE',
       })
 
-      setNotice('Compte supprimé.')
+      setNotice('Compte supprimÃ©.')
       await onRefresh()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Suppression impossible.')
@@ -369,7 +369,7 @@ export default function UserCrud({
         <div>
           <h2>Comptes utilisateurs</h2>
           <p className="muted">
-            {filteredUsers.length} résultat(s) · {users.length} compte(s) chargés
+            {filteredUsers.length} résultat(s) Â· {users.length} compte(s) chargÃ©s
           </p>
         </div>
         <button type="button" className="primary-button" onClick={startCreate}>
@@ -388,7 +388,7 @@ export default function UserCrud({
             setSearch(event.target.value)
             setPage(0)
           }}
-          placeholder="Rechercher : nom, e-mail, téléphone…"
+          placeholder="Rechercher : nom, e-mail, téléphone"
           aria-label="Rechercher un utilisateur"
         />
         <select
@@ -429,9 +429,9 @@ export default function UserCrud({
                   </td>
                   <td>
                     <span>{item.email}</span>
-                    <small className="cell-sub">{item.telephone || 'Téléphone non renseigné'}</small>
+                    <small className="cell-sub">{item.telephone || 'TÃ©lÃ©phone non renseignÃ©'}</small>
                   </td>
-                  <td>{item.fonction || '—'}</td>
+                  <td>{item.fonction || 'â€”'}</td>
                   <td><span className="role-pill">{item.role.replaceAll('_', ' ')}</span></td>
                   <td>
                     <span className={`status ${item.actif === false ? 'inactive' : 'confirmed'}`}>
@@ -446,7 +446,7 @@ export default function UserCrud({
                         onClick={() => void openUser(item.id, 'edit')}>Modifier</button>
                       <button type="button" className="secondary-button" disabled={busy}
                         onClick={() => void toggleActive(item)}>
-                        {item.actif === false ? 'Réactiver' : 'Désactiver'}
+                        {item.actif === false ? 'RÃ©activer' : 'DÃ©sactiver'}
                       </button>
                       <button type="button" className="danger-button" disabled={busy}
                         onClick={() => void deleteUser(item)}>Supprimer</button>
@@ -461,11 +461,11 @@ export default function UserCrud({
 
       <div className="table-foot pagination-controls">
         <span>
-          Page {page + 1} sur {pageCount} · {filteredUsers.length} compte(s)
+          Page {page + 1} sur {pageCount} Â· {filteredUsers.length} compte(s)
         </span>
         <div>
           <button type="button" className="secondary-button" disabled={page === 0 || busy}
-            onClick={() => setPage((value) => Math.max(0, value - 1))}>Précédent</button>
+            onClick={() => setPage((value) => Math.max(0, value - 1))}>PrÃ©cÃ©dent</button>
           <button type="button" className="secondary-button"
             disabled={page + 1 >= pageCount || busy}
             onClick={() => setPage((value) => Math.min(pageCount - 1, value + 1))}>Suivant</button>
@@ -481,13 +481,13 @@ export default function UserCrud({
             <div className="panel-heading">
               <div>
                 <h2 id="user-modal-title">
-                  {mode === 'create' ? 'Créer un utilisateur' :
+                  {mode === 'create' ? 'CrÃ©er un utilisateur' :
                     mode === 'edit' ? `Modifier le compte #${selected?.id}` :
-                      `Détail du compte #${selected?.id}`}
+                      `DÃ©tail du compte #${selected?.id}`}
                 </h2>
                 <p className="muted">
                   {mode === 'view' ? 'Informations du compte utilisateur.' :
-                    'Les champs marqués * sont obligatoires.'}
+                    'Les champs marquÃ©s * sont obligatoires.'}
                 </p>
               </div>
               <button type="button" className="secondary-button" disabled={busy}
@@ -502,7 +502,7 @@ export default function UserCrud({
                     onChange={(e) => field('nom', e.target.value)} />
                 </label>
                 <label className="nf-field">
-                  Prénom *
+                  PrÃ©nom *
                   <input required maxLength={150} value={form.prenom} disabled={mode === 'view'}
                     onChange={(e) => field('prenom', e.target.value)} />
                 </label>
@@ -512,7 +512,7 @@ export default function UserCrud({
                     disabled={mode === 'view'} onChange={(e) => field('email', e.target.value)} />
                 </label>
                 <label className="nf-field">
-                  Téléphone *
+                  TÃ©lÃ©phone *
                   <input required type="tel" minLength={8} maxLength={20} value={form.telephone}
                     disabled={mode === 'view'} placeholder="+228 90 00 00 00"
                     onChange={(e) => field('telephone', e.target.value)} />
@@ -523,7 +523,7 @@ export default function UserCrud({
                     onChange={(e) => field('fonction', e.target.value)} />
                 </label>
                 <label className="nf-field">
-                  Rôle *
+                  RÃ´le *
                   <select required value={form.role} disabled={mode === 'view'}
                     onChange={(e) => field('role', e.target.value)}>
                     <option value="agent_fs">Agent FS</option>
@@ -534,7 +534,7 @@ export default function UserCrud({
 
                 {mode === 'create' && (
                   <label className="nf-field user-form-wide">
-                    Mot de passe * (12 caractères minimum)
+                    Mot de passe * (12 caractÃ¨res minimum)
                     <input required type="password" minLength={12} maxLength={128}
                       autoComplete="new-password" value={form.password}
                       onChange={(e) => field('password', e.target.value)} />
@@ -550,7 +550,7 @@ export default function UserCrud({
                 )}
 
                 <label className="nf-field">
-                  Région
+                  RÃ©gion
                   <select value={form.region_id} disabled={mode === 'view'}
                     onChange={(e) => {
                       field('region_id', e.target.value)
@@ -558,19 +558,19 @@ export default function UserCrud({
                       field('commune_id', '')
                       field('formation_sanitaire_id', '')
                     }}>
-                    <option value="">Non définie</option>
+                    <option value="">Non dÃ©finie</option>
                     {regions.map((s) => <option key={s.id} value={s.id}>{s.libelle}</option>)}
                   </select>
                 </label>
                 <label className="nf-field">
-                  Préfecture
+                  PrÃ©fecture
                   <select value={form.prefecture_id} disabled={mode === 'view'}
                     onChange={(e) => {
                       field('prefecture_id', e.target.value)
                       field('commune_id', '')
                       field('formation_sanitaire_id', '')
                     }}>
-                    <option value="">Non définie</option>
+                    <option value="">Non dÃ©finie</option>
                     {availablePrefectures.map((s) => <option key={s.id} value={s.id}>{s.libelle}</option>)}
                   </select>
                 </label>
@@ -581,7 +581,7 @@ export default function UserCrud({
                       field('commune_id', e.target.value)
                       field('formation_sanitaire_id', '')
                     }}>
-                    <option value="">Non définie</option>
+                    <option value="">Non dÃ©finie</option>
                     {availableCommunes.map((s) => <option key={s.id} value={s.id}>{s.libelle}</option>)}
                   </select>
                 </label>
@@ -589,7 +589,7 @@ export default function UserCrud({
                   Formation sanitaire
                   <select value={form.formation_sanitaire_id} disabled={mode === 'view'}
                     onChange={(e) => field('formation_sanitaire_id', e.target.value)}>
-                    <option value="">Non définie</option>
+                    <option value="">Non dÃ©finie</option>
                     {availableFormations.map((s) => <option key={s.id} value={s.id}>{s.libelle}</option>)}
                   </select>
                 </label>
@@ -607,7 +607,7 @@ export default function UserCrud({
 
                 {selected?.cree_le && (
                   <p className="muted user-form-wide">
-                    Créé le : {new Date(selected.cree_le).toLocaleString('fr-FR')}
+                    CrÃ©Ã© le : {new Date(selected.cree_le).toLocaleString('fr-FR')}
                   </p>
                 )}
               </div>
@@ -619,7 +619,7 @@ export default function UserCrud({
                   <button type="button" className="secondary-button" disabled={busy}
                     onClick={closeModal}>Annuler</button>
                   <button type="submit" className="primary-button" disabled={busy}>
-                    {busy ? 'Enregistrement…' : mode === 'create' ? 'Créer le compte' : 'Enregistrer les modifications'}
+                    {busy ? 'Enregistrementâ€¦' : mode === 'create' ? 'CrÃ©er le compte' : 'Enregistrer les modifications'}
                   </button>
                 </div>
               )}
@@ -630,3 +630,4 @@ export default function UserCrud({
     </section>
   )
 }
+

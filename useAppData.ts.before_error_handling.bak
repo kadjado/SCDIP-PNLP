@@ -1,0 +1,116 @@
+
+import { useCallback, useState } from 'react'
+import { api } from '../services/api'
+import type { User, Fiche, Structure } from '../types'
+
+type UseAppDataOptions = {
+  setUser: (user: User | null) => void
+  setLoading: (loading: boolean) => void
+  setError: (error: string) => void
+  onSessionInvalid: () => Promise<void>
+}
+
+export function useAppData({
+  setUser,
+  setLoading,
+  setError,
+  onSessionInvalid,
+}: UseAppDataOptions) {
+  const [fiches, setFiches] = useState<Fiche[]>([])
+  const [users, setUsers] = useState<User[]>([])
+  const [regions, setRegions] = useState<Structure[]>([])
+  const [prefectures, setPrefectures] = useState<Structure[]>([])
+  const [communes, setCommunes] = useState<Structure[]>([])
+  const [formations, setFormations] = useState<Structure[]>([])
+
+  const clearSessionData = useCallback(() => {
+    setFiches([])
+    setUsers([])
+  }, [])
+
+  const loadData = useCallback(async (activeToken: string) => {
+    setLoading(true)
+    setError('')
+
+    try {
+      const me = await api<User>('/api/v1/auth/me', activeToken)
+      setUser(me)
+
+      if (me.role === 'superviseur') {
+        setUsers([])
+        setRegions([])
+        setPrefectures([])
+        setCommunes([])
+        setFormations([])
+
+        try {
+          const supervisorFiches = await api<Fiche[]>(
+            '/api/v1/fiches?limit=50&offset=0',
+            activeToken,
+          )
+          setFiches(supervisorFiches)
+        } catch (e) {
+          setError(
+            'Chargement des fiches impossible : ' +
+              (e instanceof Error ? e.message : String(e)),
+          )
+        } finally {
+          setLoading(false)
+        }
+
+        return
+      }
+    } catch (e) {
+      await onSessionInvalid()
+      setError(
+        e instanceof Error
+          ? e.message
+          : 'Session invalide. Veuillez vous reconnecter.',
+      )
+      setLoading(false)
+      return
+    }
+
+    const results = await Promise.allSettled([
+      api<Fiche[]>('/api/v1/fiches?limit=50&offset=0', activeToken),
+      api<User[]>('/api/v1/admin/users?limit=100&offset=0', activeToken),
+      api<Structure[]>('/api/v1/admin/structures/regions', activeToken),
+      api<Structure[]>('/api/v1/admin/structures/prefectures', activeToken),
+      api<Structure[]>('/api/v1/admin/structures/communes', activeToken),
+      api<Structure[]>(
+        '/api/v1/admin/structures/formations-sanitaires',
+        activeToken,
+      ),
+    ])
+
+    if (results[0].status === 'fulfilled') {
+      setFiches(results[0].value)
+    } else {
+      setError(
+        'Chargement des fiches impossible : ' +
+          String(results[0].reason),
+      )
+    }
+
+    if (results[1].status === 'fulfilled') setUsers(results[1].value)
+    if (results[2].status === 'fulfilled') setRegions(results[2].value)
+    if (results[3].status === 'fulfilled') setPrefectures(results[3].value)
+    if (results[4].status === 'fulfilled') setCommunes(results[4].value)
+    if (results[5].status === 'fulfilled') setFormations(results[5].value)
+
+    setLoading(false)
+  }, [setUser, setLoading, setError, onSessionInvalid])
+
+  return {
+    fiches,
+    setFiches,
+    users,
+    setUsers,
+    regions,
+    prefectures,
+    communes,
+    formations,
+    loadData,
+    clearSessionData,
+  }
+}
