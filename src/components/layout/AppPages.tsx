@@ -4,8 +4,10 @@ import Mailbox from '../mailbox/Mailbox'
 import UserCrud from '../users/UserCrud'
 import StructurePanel from '../structures/StructurePanel'
 import ComingSoon from '../shared/ComingSoon'
+//import ReportsPage from '../reports/ReportsPage'
 import ProfilePage from '../account/ProfilePage'
 import HelpPage from '../account/HelpPage'
+import ReportsCenter from "../reports/ReportsCenter";
 import type { Page } from '../../config/navigation'
 
 import type { Fiche, Structure, User } from '../../types'
@@ -180,10 +182,7 @@ function AppPages({
       )}
 
       {page === 'rapport' && (
-        <ComingSoon
-          icon="bars"
-          text="Les rapports seront disponibles ici."
-        />
+        <ReportsCenter token={token} />
       )}
 
       {page === 'export' && (
@@ -204,3 +203,4 @@ function AppPages({
 }
 
 export default AppPages
+
