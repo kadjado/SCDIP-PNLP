@@ -1,6 +1,7 @@
-﻿import { useCallback, useEffect, useRef, useState } from 'react'
+﻿import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import './App.css'
+import { subscribeGlobalLoading, getGlobalLoadingSnapshot } from './services/globalLoading'
 import { useAuth } from './contexts/AuthContext'
 import { usePush } from './contexts/PushContext'
 import { useAppData } from './hooks/useAppData'
@@ -29,9 +30,31 @@ import type {
 } from './types'
 
 
+function GlobalLoadingOverlay() {
+  return (
+    <div
+      className="global-loading-overlay"
+      role="status"
+      aria-live="polite"
+      aria-busy="true"
+    >
+      <div className="global-loading-content">
+        <span className="global-loading-spinner" aria-hidden="true" />
+        <span>Chargement en cours…</span>
+      </div>
+    </div>
+  )
+}
 function App() {
+  const globalLoading = useSyncExternalStore(
+    subscribeGlobalLoading,
+    getGlobalLoadingSnapshot,
+    getGlobalLoadingSnapshot,
+  )
+
   const navigate = useNavigate()
   const location = useLocation()
+  const previousLocationRef = useRef(location.pathname + location.search)
 
   const {
     token,
@@ -116,6 +139,8 @@ useEffect(() => {
     visibleNavigation,
   } = useAppNavigation(isSupervisor)
   const isNationalAdmin = user?.role === 'administrateur_national'
+  const ficheIdToOpen = new URLSearchParams(location.search).get('fiche_id')
+  const notificationIdToOpen = new URLSearchParams(location.search).get('notification_id')
 
   const navigationForRole = isNationalAdmin
     ? visibleNavigation
@@ -134,6 +159,7 @@ useEffect(() => {
     handleLogin,
   } = useLogin(login, setBusy)
   const [dataLoading, setDataLoading] = useState(false)
+  const [navigationLoading, setNavigationLoading] = useState(false)
   const [error, setError] = useState('')
   const [search, setSearch] = useState('')
   const [pageOffset, setPageOffset] = useState(0)
@@ -174,6 +200,22 @@ useEffect(() => {
   })
   clearSessionDataRef.current = clearSessionData
   const loading = dataLoading || fichesLoading
+  const showGlobalOverlay = globalLoading || loading || navigationLoading
+
+  useEffect(() => {
+    const currentLocation = location.pathname + location.search
+
+    if (previousLocationRef.current === currentLocation) return
+
+    previousLocationRef.current = currentLocation
+    setNavigationLoading(true)
+
+    const timeoutId = window.setTimeout(() => {
+      setNavigationLoading(false)
+    }, 500)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [location.pathname, location.search])
   const { logout } = useSession({ handleInvalidSession })
   const { handleSupervisorAction } = useSupervisorActions({
     token,
@@ -190,21 +232,26 @@ useEffect(() => {
   }, [token, loadData])
   
   if (!token) {
-  return (
-    <LoginPage
-      email={email}
-      setEmail={setEmail}
-      password={password}
-      setPassword={setPassword}
-      showPassword={showPassword}
-      setShowPassword={setShowPassword}
-      loginError={loginError}
-      error={error}
-      busy={busy}
-      onSubmit={handleLogin}
-    />
-  )
-}
+    return (
+      <>
+        <div inert={showGlobalOverlay}>
+          <LoginPage
+            email={email}
+            setEmail={setEmail}
+            password={password}
+            setPassword={setPassword}
+            showPassword={showPassword}
+            setShowPassword={setShowPassword}
+            loginError={loginError}
+            error={error}
+            busy={busy}
+            onSubmit={handleLogin}
+          />
+        </div>
+        {showGlobalOverlay && <GlobalLoadingOverlay />}
+      </>
+    )
+  }
 
   const pageTitle = [...navigation, ...settingsNavigation, ...accountPages]
     .find((item) => item.id === page)?.label || 'Tableau de bord'
@@ -214,7 +261,8 @@ useEffect(() => {
     'Consultez les structures administratives et sanitaires.'
   const userRoleLabel = (user?.role || 'Compte connecté').replace(/_/g, ' ')
   return (
-    <div className={`app-shell ${menuOpen ? '' : 'menu-closed'}`}>
+    <>
+      <div className={`app-shell ${menuOpen ? '' : 'menu-closed'}`} inert={showGlobalOverlay}>
       <AppSidebar
         page={page}
         settingsOpen={settingsOpen}
@@ -245,12 +293,14 @@ useEffect(() => {
               void activatePush()
             }
           }}
+          onOpenNotifications={() => navigate('/notifications')}
           onOpenAccountPage={(target) => {
             setSearch('')
             setPage(target)
           }}
           onLogout={() => void logout()}
         />
+
         <AppContent
           page={page}
           pageTitle={pageTitle}
@@ -319,10 +369,18 @@ useEffect(() => {
               await loadData(token)
             }}
             onSessionInvalid={handleInvalidSession}
+            ficheIdToOpen={page === 'fiches' ? ficheIdToOpen : null}
+            notificationIdToOpen={page === 'mailbox' ? notificationIdToOpen : null}
+            onAutoOpenClose={() => navigate('/forms', { replace: true })}
+            onOpenFiche={(ficheId) =>
+              navigate(`/forms?fiche_id=${encodeURIComponent(ficheId)}`)
+            }
           />
         </AppContent>
       </main>
-    </div>
+      </div>
+      {showGlobalOverlay && <GlobalLoadingOverlay />}
+    </>
   )
 }
 

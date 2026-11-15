@@ -1,3 +1,66 @@
+// Ce gestionnaire doit être enregistré AVANT le SDK Firebase.
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  event.stopImmediatePropagation();
+
+  const donnees = event.notification.data || {};
+  const url = new URL("/messagerie", self.location.origin);
+
+  let ancienneUrl = null;
+
+  if (donnees.url) {
+    try {
+      ancienneUrl = new URL(donnees.url, self.location.origin);
+    } catch (erreur) {
+      console.warn("Ancienne URL de notification invalide :", erreur);
+    }
+  }
+
+  const notificationId =
+    donnees.notification_id ||
+    ancienneUrl?.searchParams.get("notification_id");
+
+  const ficheId =
+    donnees.fiche_id ||
+    ancienneUrl?.searchParams.get("fiche_id");
+
+  if (notificationId) {
+    url.searchParams.set("notification_id", String(notificationId));
+  }
+
+  if (ficheId) {
+    url.searchParams.set("fiche_id", String(ficheId));
+  }
+
+  event.waitUntil(
+    (async () => {
+      const clientsExistants = await clients.matchAll({
+        type: "window",
+        includeUncontrolled: true,
+      });
+
+      const client = clientsExistants.find(
+        (element) => element.url.startsWith(self.location.origin)
+      );
+
+      if (client) {
+        try {
+          const clientNavigue = await client.navigate(url.href);
+
+          if (clientNavigue) {
+            await clientNavigue.focus();
+            return;
+          }
+        } catch (erreur) {
+          console.warn("Navigation de l'onglet existant impossible :", erreur);
+        }
+      }
+
+      await clients.openWindow(url.href);
+    })()
+  );
+});
+
 importScripts(
   "https://www.gstatic.com/firebasejs/13.1.0/firebase-app-compat.js"
 );
@@ -6,7 +69,7 @@ importScripts(
 );
 
 firebase.initializeApp({
-  apiKey: "AIzaSyDO9bKH4vRi6f-5UET1WoBK26gL7qj2-s",
+  apiKey: "AIzaSyDO9bKH4vRi6f-5UET1WoBK26lG7Lqj2-s",
   authDomain: "scdip-6b090.firebaseapp.com",
   projectId: "scdip-6b090",
   storageBucket: "scdip-6b090.firebasestorage.app",
@@ -33,33 +96,4 @@ messaging.onBackgroundMessage((payload) => {
   };
 
   return self.registration.showNotification(title, options);
-});
-
-self.addEventListener("notificationclick", (event) => {
-  event.notification.close();
-
-  const destination = event.notification.data?.url || "/";
-  const url = new URL(destination, self.location.origin);
-
-  // Empêche une navigation vers un domaine externe.
-  if (url.origin !== self.location.origin) {
-    return;
-  }
-
-  event.waitUntil(
-    clients.matchAll({ type: "window", includeUncontrolled: true }).then(
-      async (clientList) => {
-        for (const client of clientList) {
-          if ("focus" in client) {
-            if ("navigate" in client) {
-              await client.navigate(url.href);
-            }
-            return client.focus();
-          }
-        }
-
-        return clients.openWindow(url.href);
-      },
-    ),
-  );
 });

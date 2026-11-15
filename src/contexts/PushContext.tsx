@@ -1,14 +1,16 @@
-﻿import {
+import {
   createContext,
   useCallback,
   useContext,
   useEffect,
   useMemo,
   useState,
+  useRef,
   type ReactNode,
 } from 'react'
 
 import { useAuth } from './AuthContext'
+import { useNavigate } from 'react-router-dom'
 import { api } from '../services/api'
 import {
   activatePushNotifications,
@@ -34,6 +36,9 @@ type PushProviderProps = {
 
 export function PushProvider({ children }: PushProviderProps) {
   const { token } = useAuth()
+  const navigate = useNavigate()
+  const navigationRef = useRef(navigate)
+  navigationRef.current = navigate
 
   const [pushBusy, setPushBusy] = useState(false)
   const [unreadNotifications, setUnreadNotifications] = useState(0)
@@ -69,6 +74,8 @@ export function PushProvider({ children }: PushProviderProps) {
         const response = await api<{ non_lues: number }>(
           '/api/v1/notifications/non-lues/count',
           token,
+          {},
+          { silent: true },
         )
 
         if (!cancelled) {
@@ -112,7 +119,7 @@ export function PushProvider({ children }: PushProviderProps) {
             jeton,
             plateforme: 'web',
           }),
-        })
+        }, { silent: true })
 
         if (!cancelled) {
           localStorage.setItem('scdip_push_token', jeton)
@@ -149,6 +156,11 @@ export function PushProvider({ children }: PushProviderProps) {
               title?: string
               body?: string
             }
+            data?: {
+              url?: string
+              notification_id?: string
+              fiche_id?: string
+            }
           }
 
           const titre =
@@ -170,6 +182,24 @@ export function PushProvider({ children }: PushProviderProps) {
 
               notification.onclick = () => {
                 window.focus()
+
+                const params = new URLSearchParams()
+                const notificationId = donnees.data?.notification_id
+                const ficheId = donnees.data?.fiche_id
+
+                if (notificationId) {
+                  params.set('notification_id', notificationId)
+                }
+
+                if (ficheId) {
+                  params.set('fiche_id', ficheId)
+                }
+
+                const query = params.toString()
+                navigationRef.current(
+                  query ? `/messagerie?${query}` : '/messagerie',
+                )
+
                 notification.close()
               }
             } catch (error) {
@@ -183,6 +213,8 @@ export function PushProvider({ children }: PushProviderProps) {
           void api<{ non_lues: number }>(
             '/api/v1/notifications/non-lues/count',
             token,
+            {},
+            { silent: true },
           )
             .then((result) => {
               if (!cancelled) {
@@ -350,4 +382,5 @@ export function usePush() {
 
   return context
 }
+
 

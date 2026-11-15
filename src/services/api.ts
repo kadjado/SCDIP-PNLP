@@ -1,3 +1,5 @@
+import { beginGlobalLoading } from './globalLoading'
+
 const API_URL = (
   import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'
 ).replace(/\/$/, '')
@@ -141,36 +143,46 @@ export async function api<T>(
   path: string,
   token: string,
   options: RequestInit = {},
+  loadingOptions: { silent?: boolean } = {},
 ): Promise<T> {
-  let response = await executeRequest(path, token, options)
+  const finishLoading = loadingOptions.silent
+    ? () => {}
+    : beginGlobalLoading()
 
-  if (
-    response.status === 401 &&
-    !isAuthenticationEndpoint(path)
-  ) {
-    const newToken = await refreshAccessToken()
+  try {
+    let response = await executeRequest(path, token, options)
 
-    if (!newToken) {
+    if (
+      response.status === 401 &&
+      !isAuthenticationEndpoint(path)
+    ) {
+      const newToken = await refreshAccessToken()
+
+      if (!newToken) {
+        throw await parseApiError(response)
+      }
+
+      response = await executeRequest(path, newToken, options)
+
+      if (response.status === 401) {
+        notifySessionInvalid()
+      }
+    }
+
+    if (!response.ok) {
       throw await parseApiError(response)
     }
 
-    // Rejoue automatiquement la requête initiale avec le nouveau JWT.
-    response = await executeRequest(path, newToken, options)
-
-    if (response.status === 401) {
-      notifySessionInvalid()
+    if (response.status === 204) {
+      return undefined as T
     }
-  }
 
-  if (!response.ok) {
-    throw await parseApiError(response)
+    return response.json() as Promise<T>
+  } finally {
+    finishLoading()
   }
-
-  if (response.status === 204) {
-    return undefined as T
-  }
-
-  return response.json() as Promise<T>
 }
 
 export { API_URL }
+
+

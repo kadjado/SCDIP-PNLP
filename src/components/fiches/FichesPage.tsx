@@ -1,7 +1,9 @@
-﻿import type { ComponentProps, Dispatch, SetStateAction } from 'react'
+import { useState, type ComponentProps, type Dispatch, type SetStateAction } from 'react'
 import Icon from '../shared/Icon'
 import FicheTable from './FicheTable'
+import FicheActions from './FicheActions'
 import NewFicheForm from './NewFicheForm'
+import type { Fiche } from '../../types'
 
 type FicheTableProps = ComponentProps<typeof FicheTable>
 
@@ -19,10 +21,15 @@ type FichesPageProps = {
   totalFiches: number
   showNewFiche: boolean
   setShowNewFiche: Dispatch<SetStateAction<boolean>>
-  onAction: FicheTableProps['onAction']
-  onRefresh: FicheTableProps['onRefresh']
+  onAction: (
+    fiche: Fiche,
+    action: 'valider' | 'demander-correction' | 'traiter-correction',
+  ) => void
+  onRefresh: () => Promise<void>
   onCreated: () => Promise<void>
   onSessionInvalid: () => Promise<void>
+  ficheIdToOpen: string | null
+  onAutoOpenClose: () => void
 }
 
 function FichesPage({
@@ -42,8 +49,53 @@ function FichesPage({
   onAction,
   onRefresh,
   onCreated,
-  onSessionInvalid
+  onSessionInvalid,
+  ficheIdToOpen,
+  onAutoOpenClose,
 }: FichesPageProps) {
+  const [ficheSelectionnee, setFicheSelectionnee] = useState<Fiche | null>(null)
+
+  if (ficheSelectionnee) {
+    return (
+      <FicheActions
+        ficheId={ficheSelectionnee.id}
+        numeroFiche={ficheSelectionnee.numero_fiche || ''}
+        token={token}
+        role={role}
+        onRefresh={onRefresh}
+        onSessionInvalid={onSessionInvalid}
+        autoOpen
+        hideActions
+        fiche={ficheSelectionnee}
+        onAction={onAction}
+        busy={busy}
+        showWorkflowActions
+        onAutoOpenClose={() => setFicheSelectionnee(null)}
+        displayAsPage
+      />
+    )
+  }
+
+  if (ficheIdToOpen) {
+    return (
+      <FicheActions
+        ficheId={ficheIdToOpen}
+        numeroFiche=""
+        token={token}
+        role={role}
+        onRefresh={onRefresh}
+        onSessionInvalid={onSessionInvalid}
+        autoOpen
+        hideActions
+        onAction={onAction}
+        busy={busy}
+        showWorkflowActions
+        onAutoOpenClose={onAutoOpenClose}
+        displayAsPage
+      />
+    )
+  }
+
   return (
     <section className="panel list-panel fiches-panel">
       <div className="panel-heading list-heading">
@@ -102,11 +154,11 @@ function FichesPage({
         loading={loading}
         role={role}
         busy={busy}
-        onAction={onAction}
         token={token}
         onRefresh={onRefresh}
         onSessionInvalid={onSessionInvalid}
-
+        onAction={onAction}
+        onSelectFiche={setFicheSelectionnee}
       />
 
       <div className="table-foot pagination-controls">
@@ -142,4 +194,3 @@ function FichesPage({
 }
 
 export default FichesPage
-

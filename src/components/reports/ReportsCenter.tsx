@@ -2,6 +2,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "../../services/api";
 import "./ReportsCenter.css";
+import type { Page } from '../../config/navigation'
+
 
 type Periodicite = "jour" | "semaine" | "mois" | "annee";
 
@@ -108,6 +110,8 @@ const EMPTY_GEO: StatistiquesGeographiques = {
 
 type ReportsCenterProps = {
   token: string;
+  onSetPage: (page: Page) => void
+
 };
 
 const number = (value: number) =>
@@ -173,7 +177,7 @@ const EMPTY_STATS: StatistiquesRapport = {
   evolution: [],
 };
 
-export default function ReportsCenter({ token }: ReportsCenterProps) {
+export default function ReportsCenter({ token, onSetPage  }: ReportsCenterProps) {
   const [stats, setStats] = useState<StatistiquesRapport>(EMPTY_STATS);
   const [geoStats, setGeoStats] =
   useState<StatistiquesGeographiques>(EMPTY_GEO);
@@ -303,8 +307,8 @@ export default function ReportsCenter({ token }: ReportsCenterProps) {
             Données réelles
           </span>
 
-          <button onClick={() => window.print()}>
-            ↧ Exporter / Imprimer
+          <button onClick={() => onSetPage('export')}>
+            Exporter les données
           </button>
         </div>
       </header>
@@ -326,7 +330,7 @@ export default function ReportsCenter({ token }: ReportsCenterProps) {
             type="date"
             value={dateFin}
             min={dateDebut || undefined}
-            onChange={(event) => setDateFin(event.target.value)}
+            onChange={( event) => setDateFin(event.target.value)}
           />
         </label>
 

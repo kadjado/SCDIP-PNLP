@@ -1,4 +1,4 @@
-﻿
+import { useState } from 'react'
 import FicheActions from './FicheActions'
 import EmptyState from '../shared/EmptyState'
 import type { Fiche } from '../../types'
@@ -15,6 +15,7 @@ type FicheTableProps = {
     fiche: Fiche,
     action: 'valider' | 'demander-correction' | 'traiter-correction',
   ) => void
+  onSelectFiche?: (fiche: Fiche) => void
 }
 
 function FicheTable({
@@ -26,7 +27,10 @@ function FicheTable({
   token,
   onRefresh,
   onSessionInvalid,
+  onSelectFiche,
 }: FicheTableProps) {
+  const [ficheSelectionnee, setFicheSelectionnee] = useState<Fiche | null>(null)
+
   if (loading && fiches.length === 0) {
     return <EmptyState text="Chargement des fiches..." />
   }
@@ -35,119 +39,104 @@ function FicheTable({
     return <EmptyState text="Aucune fiche disponible dans les résultats chargés." />
   }
 
-  const isSupervisor = role === 'superviseur'
+  function ouvrirFiche(fiche: Fiche) {
+    if (onSelectFiche) {
+      onSelectFiche(fiche)
+      return
+    }
+    setFicheSelectionnee(fiche)
+  }
 
   return (
-    <div className="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Numéro de fiche</th>
-            <th>Date consultation</th>
-            <th>Âge</th>
-            <th>Sexe</th>
-            <th>Diagnostic</th>
-            <th>Validation</th>
-            <th>Gestion</th>
-            {isSupervisor && <th>Actions</th>}
-          </tr>
-        </thead>
-
-        <tbody>
-          {fiches.map((fiche) => (
-            <tr key={fiche.id}>
-              <td>
-                <strong>{fiche.numero_fiche || fiche.id.slice(0, 8)}</strong>
-              </td>
-
-              <td>
-                {fiche.date_consultation
-                  ? new Date(fiche.date_consultation).toLocaleDateString('fr-FR')
-                  : '—'}
-              </td>
-
-              <td>{fiche.age} ans</td>
-
-              <td>
-                {fiche.sexe === 'M'
-                  ? 'Masculin'
-                  : fiche.sexe === 'F'
-                    ? 'Féminin'
-                    : fiche.sexe}
-              </td>
-
-              <td>
-                <span className="diagnostic">
-                  {fiche.diagnostic || 'Non renseigné'}
-                </span>
-              </td>
-
-              <td>
-                <span
-                  className={`status ${
-                    fiche.validation_confirmee ? 'confirmed' : 'pending'
-                  }`}
-                >
-                  {fiche.validation_confirmee ? 'Confirmée' : 'À confirmer'}
-                </span>
-              </td>
-
-              <td>
-                <FicheActions
-                  ficheId={fiche.id}
-                  numeroFiche={fiche.numero_fiche}
-                  token={token}
-                  role={role}
-                  onRefresh={onRefresh}
-                  onSessionInvalid={onSessionInvalid}
-                />
-              </td>
-
-              {isSupervisor && (
-                <td>
-                  <div className="fiche-actions">
-                    {!fiche.validation_confirmee && (
-                      <>
-                        <button
-                          type="button"
-                          className="secondary-button"
-                          disabled={busy}
-                          onClick={() => onAction(fiche, 'valider')}
-                        >
-                          Valider
-                        </button>
-
-                        <button
-                          type="button"
-                          className="secondary-button"
-                          disabled={busy}
-                          onClick={() => onAction(fiche, 'demander-correction')}
-                        >
-                          Demander correction
-                        </button>
-
-                        <button
-                          type="button"
-                          className="secondary-button"
-                          disabled={busy}
-                          onClick={() => onAction(fiche, 'traiter-correction')}
-                        >
-                          Traiter réponse
-                        </button>
-                      </>
-                    )}
-
-                    {fiche.validation_confirmee && (
-                      <span className="status confirmed">Déjà validée</span>
-                    )}
-                  </div>
-                </td>
-              )}
+    <>
+      <div className="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Numéro de fiche</th>
+              <th>Date consultation</th>
+              <th>Âge</th>
+              <th>Sexe</th>
+              <th>Diagnostic</th>
+              <th>Validation</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+          </thead>
+
+          <tbody>
+            {fiches.map((fiche) => (
+              <tr
+                key={fiche.id}
+                className="fiche-row-clickable"
+                tabIndex={0}
+                aria-label={`Ouvrir les détails de la fiche ${fiche.numero_fiche || fiche.id.slice(0, 8)}`}
+                title="Cliquer pour consulter les détails de cette fiche"
+                onClick={() => ouvrirFiche(fiche)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault()
+                    ouvrirFiche(fiche)
+                  }
+                }}
+              >
+                <td>
+                  <strong>{fiche.numero_fiche || fiche.id.slice(0, 8)}</strong>
+                </td>
+
+                <td>
+                  {fiche.date_consultation
+                    ? new Date(fiche.date_consultation).toLocaleDateString('fr-FR')
+                    : '—'}
+                </td>
+
+                <td>{fiche.age} ans</td>
+
+                <td>
+                  {fiche.sexe === 'M'
+                    ? 'Masculin'
+                    : fiche.sexe === 'F'
+                      ? 'Féminin'
+                      : fiche.sexe}
+                </td>
+
+                <td>
+                  <span className="diagnostic">
+                    {fiche.diagnostic || 'Non renseigné'}
+                  </span>
+                </td>
+
+                <td>
+                  <span
+                    className={`status ${
+                      fiche.validation_confirmee ? 'confirmed' : 'pending'
+                    }`}
+                  >
+                    {fiche.validation_confirmee ? 'Confirmée' : 'À confirmer'}
+                  </span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {ficheSelectionnee && (
+        <FicheActions
+          ficheId={ficheSelectionnee.id}
+          numeroFiche={ficheSelectionnee.numero_fiche || ''}
+          token={token}
+          role={role}
+          onRefresh={onRefresh}
+          onSessionInvalid={onSessionInvalid}
+          autoOpen
+          hideActions
+          fiche={ficheSelectionnee}
+          onAction={onAction}
+          busy={busy}
+          showWorkflowActions
+          onAutoOpenClose={() => setFicheSelectionnee(null)}
+        />
+      )}
+    </>
   )
 }
 

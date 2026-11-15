@@ -1,7 +1,15 @@
-﻿// scdip\web\src\FicheActions.tsx
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import './FicheActions.css'
 import { api, ApiError } from '../../services/api'
+import type { Fiche } from '../../types'
+import Icon from '../shared/Icon'
+
+type FicheActionType =
+  | 'valider'
+  | 'demander-correction'
+  | 'traiter-correction'
+
 type FicheActionsProps = {
   ficheId: string
   numeroFiche: string
@@ -9,16 +17,93 @@ type FicheActionsProps = {
   role: string
   onRefresh: () => Promise<void>
   onSessionInvalid: () => Promise<void>
-
+  autoOpen?: boolean
+  hideActions?: boolean
+  onAutoOpenClose?: () => void
+  fiche?: Fiche
+  onAction?: (fiche: Fiche, action: FicheActionType) => void
+  busy?: boolean
+  showWorkflowActions?: boolean
+  displayAsPage?: boolean
 }
 
 type FicheDetail = Record<string, unknown>
+
+type EditValues = Record<string, string>
+
+const EDITABLE_FIELDS = [
+  'date_consultation',
+  'mois',
+  'grossesse',
+  'tpi1',
+  'tpi2',
+  'type_consultation',
+  'fievre',
+  'motif_consultation',
+  'ge_realisee',
+  'type_ge',
+  'charge_sigep',
+  'tdr_realise',
+  'type_tdr_id',
+  'resultat_tdr',
+  'numero_laboratoire',
+  'diagnostic',
+  'asaq',
+  'arlm',
+  'quinine_comprime',
+  'quinine_injectable',
+  'artesunate_injectable',
+  'autre_traitement',
+  'hospitalise',
+  'date_sortie',
+  'issue_hospitalisation',
+] as const
+
+const BOOLEAN_FIELDS = new Set([
+  'tpi1',
+  'fievre',
+  'ge_realisee',
+  'tdr_realise',
+  'asaq',
+  'arlm',
+  'quinine_comprime',
+  'quinine_injectable',
+  'artesunate_injectable',
+  'hospitalise',
+])
+
+const FIELD_OPTIONS: Record<string, string[]> = {
+  tpi2: ['Oui', 'Non', 'Non applicable'],
+  type_consultation: ['Nouveau cas', 'Reconsultation', 'Référé'],
+  diagnostic: [
+    'Non confirmé',
+    'Paludisme simple',
+    'Paludisme grave',
+    'Autre',
+  ],
+  issue_hospitalisation: [
+    'Guéri',
+    'Transféré',
+    'Décédé',
+    'Sorti contre avis',
+    'En cours',
+  ],
+}
+
+function valeurEdition(value: unknown): string {
+  if (value === null || value === undefined) return ''
+  if (typeof value === 'boolean') return value ? 'true' : 'false'
+  return String(value)
+}
+
 
 const labels: Record<string, string> = {
   numero_fiche: 'Numéro de fiche',
   date_consultation: 'Date de consultation',
   date_saisie: 'Date de saisie',
   num_oc: 'Numéro OC',
+  client_reference: 'Référence client',
+  formation_sanitaire_id: 'Formation sanitaire',
   mois: 'Mois',
   age: 'Âge',
   sexe: 'Sexe',
@@ -50,9 +135,18 @@ const labels: Record<string, string> = {
 }
 
 function displayValue(value: unknown): string {
-  if (value === null || value === undefined || value === '') return 'Non renseigné'
-  if (typeof value === 'boolean') return value ? 'Oui' : 'Non'
-  if (typeof value === 'object') return JSON.stringify(value)
+  if (value === null || value === undefined || value === '') {
+    return 'Non renseigné'
+  }
+
+  if (typeof value === 'boolean') {
+    return value ? 'Oui' : 'Non'
+  }
+
+  if (typeof value === 'object') {
+    return JSON.stringify(value)
+  }
+
   return String(value)
 }
 
@@ -63,93 +157,549 @@ export default function FicheActions({
   role,
   onRefresh,
   onSessionInvalid,
-
+  autoOpen = false,
+  hideActions = false,
+  onAutoOpenClose,
+  fiche,
+  onAction,
+  busy = false,
+  showWorkflowActions = false,
+  displayAsPage = false,
 }: FicheActionsProps) {
   const [detail, setDetail] = useState<FicheDetail | null>(null)
   const [showDetail, setShowDetail] = useState(false)
   const [loading, setLoading] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState('')
-  
-  async function consulter() {
-  setLoading(true)
-  setError('')
+  const [editing, setEditing] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [editValues, setEditValues] = useState<EditValues>({})
+  const [menuActionsOuvert, setMenuActionsOuvert] = useState(false)
+  const consultationAutomatiqueLancee = useRef(false)
 
-  try {
-    const body = await api<FicheDetail>(
-      `/api/v1/fiches/${ficheId}`,
-      token,
+  function fermerDetail() {
+    setShowDetail(false)
+    if (autoOpen) onAutoOpenClose?.()
+  }
+
+  async function consulter() {
+    setLoading(true)
+    setError('')
+
+    try {
+      const body = await api<FicheDetail>(
+        `/api/v1/fiches/${ficheId}`,
+        token,
+      )
+
+      setDetail(body)
+      setShowDetail(true)
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 401) {
+        await onSessionInvalid()
+        return
+      }
+
+      setError(
+        e instanceof Error
+          ? e.message
+          : 'Impossible de consulter la fiche.',
+      )
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    if (!autoOpen || consultationAutomatiqueLancee.current) return
+
+    consultationAutomatiqueLancee.current = true
+    void consulter()
+  }, [autoOpen, ficheId, token])
+
+  async function supprimer() {
+    const confirme = window.confirm(
+      `Supprimer la fiche ${numeroFiche || ficheId} ? Cette suppression sera enregistrée dans l’historique.`,
     )
 
-    setDetail(body)
-    setShowDetail(true)
-  } catch (e) {
-    if (e instanceof ApiError && e.status === 401) {
-      await onSessionInvalid()
-      return
+    if (!confirme) return
+
+    setDeleting(true)
+    setError('')
+
+    try {
+      await api<void>(
+        `/api/v1/fiches/${ficheId}`,
+        token,
+        { method: 'DELETE' },
+      )
+
+      await onRefresh()
+      fermerDetail()
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 401) {
+        await onSessionInvalid()
+        return
+      }
+
+      setError(
+        e instanceof Error
+          ? e.message
+          : 'Impossible de supprimer la fiche.',
+      )
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  function commencerModification() {
+    if (!detail || !canEdit) return
+
+    const values: EditValues = {}
+    for (const field of EDITABLE_FIELDS) {
+      let value = detail[field]
+
+      if (field === 'date_consultation' || field === 'date_sortie') {
+        value = value ? String(value).slice(0, 10) : ''
+      }
+
+      values[field] = valeurEdition(value)
     }
 
-    setError(
-      e instanceof Error
-        ? e.message
-        : 'Impossible de consulter la fiche.',
-    )
-  } finally {
-    setLoading(false)
+    setEditValues(values)
+    setError('')
+    setEditing(true)
   }
-}
 
-async function supprimer() {
-  const confirme = window.confirm(
-    `Supprimer la fiche ${numeroFiche || ficheId} ? Cette suppression sera enregistrée dans l’historique.`,
+  function annulerModification() {
+    setEditing(false)
+    setEditValues({})
+    setError('')
+  }
+
+  async function enregistrerModification() {
+    if (!detail || !canEdit) return
+
+    setSaving(true)
+    setError('')
+
+    try {
+      const payload: Record<string, unknown> = {}
+
+      for (const field of EDITABLE_FIELDS) {
+        const value = editValues[field] ?? ''
+
+        if (BOOLEAN_FIELDS.has(field)) {
+          payload[field] = value === 'true'
+        } else if (field === 'mois') {
+          payload[field] = Number(value)
+        } else if (field === 'type_tdr_id') {
+          payload[field] = value ? Number(value) : null
+        } else {
+          payload[field] = value.trim() === '' ? null : value.trim()
+        }
+      }
+
+      // Le mois doit toujours correspondre à la date de consultation.
+      const dateConsultation = String(payload.date_consultation || '')
+      if (dateConsultation.length >= 7) {
+        payload.mois = Number(dateConsultation.slice(5, 7))
+      }
+
+      // Respect des dépendances entre examens et hospitalisation.
+      if (payload.tpi1 === false) {
+        payload.tpi2 = 'Non applicable'
+      }
+
+      if (payload.ge_realisee === false) {
+        payload.type_ge = null
+        payload.charge_sigep = null
+      }
+
+      if (payload.tdr_realise === false) {
+        payload.type_tdr_id = null
+        payload.resultat_tdr = null
+        payload.numero_laboratoire = null
+      }
+
+      if (payload.hospitalise === false) {
+        payload.date_sortie = null
+        payload.issue_hospitalisation = null
+      }
+
+      const updated = await api<FicheDetail>(
+        `/api/v1/fiches/${ficheId}`,
+        token,
+        {
+          method: 'PATCH',
+          body: JSON.stringify(payload),
+        },
+      )
+
+      setDetail(updated)
+      setEditing(false)
+      setEditValues({})
+      await onRefresh()
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 401) {
+        await onSessionInvalid()
+        return
+      }
+
+      if (e instanceof ApiError && e.status === 409) {
+        setError(
+          'Cette fiche a été modifiée entre-temps. Rechargez-la avant de réessayer.',
+        )
+      } else {
+        setError(
+          e instanceof Error
+            ? e.message
+            : "Impossible d'enregistrer les modifications.",
+        )
+      }
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const validationConfirmee = Boolean(
+    detail?.validation_confirmee ?? fiche?.validation_confirmee,
   )
 
-  if (!confirme) return
+  // Le détail API sert aussi de fiche d'action lors d'une ouverture directe.
+  const fichePourAction = fiche ?? (detail as unknown as Fiche | null)
 
-  setDeleting(true)
-  setError('')
+  const canEdit =
+    role === 'superviseur' ||
+    (role === 'agent_fs' && !validationConfirmee)
 
-  try {
-    await api<void>(
-      `/api/v1/fiches/${ficheId}`,
-      token,
-      { method: 'DELETE' },
+
+  if (displayAsPage) {
+    return (
+      <section className="panel list-panel fiches-panel fiche-detail-page">
+        <div className="panel-heading list-heading">
+          <div className="list-heading-main">
+            <span className="list-icon">
+              <Icon name="fiches" />
+            </span>
+            <div>
+              <h2>
+                Fiche {String(detail?.numero_fiche || numeroFiche || ficheId)}
+              </h2>
+              <p className="muted">
+                {editing
+                  ? 'Modification des données de la fiche'
+                  : 'Consultation des données enregistrées'}
+              </p>
+            </div>
+          </div>
+
+          <div className="fiche-detail-header-actions">
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={fermerDetail}
+              disabled={saving}
+            >
+              Retour à la liste
+            </button>
+
+            {(canEdit ||
+              (showWorkflowActions &&
+                role === 'superviseur' &&
+                !validationConfirmee)) && (
+                <div className="fiche-detail-menu-container">
+                  <button
+                    type="button"
+                    className="fiche-detail-menu-trigger"
+                    aria-label="Ouvrir les actions de la fiche"
+                    aria-haspopup="menu"
+                    aria-expanded={menuActionsOuvert}
+                    onClick={() => setMenuActionsOuvert((open) => !open)}
+                    disabled={busy || deleting || saving || !fichePourAction}
+                  >
+                    ⋮
+                  </button>
+
+                  {menuActionsOuvert && (
+                    <div className="fiche-detail-actions-menu" role="menu">
+                      {canEdit && !editing && (
+                        <button
+                          type="button"
+                          role="menuitem"
+                          disabled={loading || deleting || busy || saving}
+                          onClick={() => {
+                            setMenuActionsOuvert(false)
+                            commencerModification()
+                          }}
+                        >
+                          Modifier
+                        </button>
+                      )}
+
+                      {showWorkflowActions &&
+                        role === 'superviseur' &&
+                        !validationConfirmee && (
+                          <>
+                      <button
+                        type="button"
+                        role="menuitem"
+                        disabled={busy || deleting || !fichePourAction}
+                        onClick={() => {
+                          setMenuActionsOuvert(false)
+                          if (fichePourAction) {
+                            onAction?.(fichePourAction, 'demander-correction')
+                          }
+                        }}
+                      >
+                        Demander correction
+                      </button>
+
+                      <button
+                        type="button"
+                        role="menuitem"
+                        disabled={busy || deleting || !fichePourAction}
+                        onClick={() => {
+                          setMenuActionsOuvert(false)
+                          if (fichePourAction) {
+                            onAction?.(fichePourAction, 'traiter-correction')
+                          }
+                        }}
+                      >
+                        Traiter réponse
+                      </button>
+                          </>
+                        )}
+                    </div>
+                  )}
+                </div>
+              )}
+          </div>
+        </div>
+
+        {error && <div className="alert error">{error}</div>}
+
+        {loading && !detail && (
+          <div className="fiche-detail-loading">
+            Chargement des données de la fiche…
+          </div>
+        )}
+
+        {!loading && !detail && !error && (
+          <div className="fiche-detail-loading">
+            Aucune donnée disponible pour cette fiche.
+          </div>
+        )}
+
+        {detail && (
+          <>
+            <div className="user-form-grid fiche-detail-content">
+              {Object.entries(detail)
+                .filter(
+                  ([key]) =>
+                    ![
+                      'id',
+                      'agent_id',
+                      'validee_par_id',
+                      'supprime_le',
+                    ].includes(key),
+                )
+                .map(([key, value]) => {
+                  const editable = EDITABLE_FIELDS.includes(
+                    key as (typeof EDITABLE_FIELDS)[number],
+                  )
+                  const fieldValue = editValues[key] ?? ''
+
+                  return (
+                    <label className="nf-field" key={key}>
+                      <span>{labels[key] || key.replaceAll('_', ' ')}</span>
+
+                      {editing && editable ? (
+                        BOOLEAN_FIELDS.has(key) ? (
+                          <select
+                            value={fieldValue}
+                            disabled={saving}
+                            onChange={(event) =>
+                              setEditValues((previous) => ({
+                                ...previous,
+                                [key]: event.target.value,
+                              }))
+                            }
+                          >
+                            <option value="false">Non</option>
+                            <option value="true">Oui</option>
+                          </select>
+                        ) : FIELD_OPTIONS[key] ? (
+                          <select
+                            value={fieldValue}
+                            disabled={saving}
+                            onChange={(event) =>
+                              setEditValues((previous) => ({
+                                ...previous,
+                                [key]: event.target.value,
+                              }))
+                            }
+                          >
+                            <option value="">Sélectionner…</option>
+                            {FIELD_OPTIONS[key].map((option) => (
+                              <option key={option} value={option}>
+                                {option}
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          <input
+                            type={
+                              key === 'date_consultation' ||
+                              key === 'date_sortie'
+                                ? 'date'
+                                : key === 'mois' || key === 'type_tdr_id'
+                                  ? 'number'
+                                  : 'text'
+                            }
+                            min={
+                              key === 'mois' || key === 'type_tdr_id'
+                                ? 1
+                                : undefined
+                            }
+                            max={key === 'mois' ? 12 : undefined}
+                            value={fieldValue}
+                            disabled={saving}
+                            onChange={(event) => {
+                              const nextValue = event.target.value
+
+                              setEditValues((previous) => ({
+                                ...previous,
+                                [key]: nextValue,
+                                ...(key === 'date_consultation' &&
+                                nextValue.length >= 7
+                                  ? {
+                                      mois: String(
+                                        Number(nextValue.slice(5, 7)),
+                                      ),
+                                    }
+                                  : {}),
+                              }))
+                            }}
+                          />
+                        )
+                      ) : (
+                        <input readOnly value={displayValue(value)} />
+                      )}
+                    </label>
+                  )
+                })}
+            </div>
+
+            {(showWorkflowActions || canEdit) && (
+              <div className="fiche-modal-footer">
+                <div className="fiche-modal-footer-info">
+                  <strong>
+                    {editing ? 'Modification de la fiche' : 'Gestion de la fiche'}
+                  </strong>
+                  <span>
+                    {editing
+                      ? 'Les champs d’identité restent protégés.'
+                      : validationConfirmee
+                        ? 'Cette fiche est déjà validée.'
+                        : 'Consultez ou modifiez les données autorisées.'}
+                  </span>
+                </div>
+
+                <div className="fiche-modal-footer-buttons">
+                  {editing ? (
+                    <>
+                      <button
+                        type="button"
+                        className="secondary-button"
+                        disabled={saving}
+                        onClick={annulerModification}
+                      >
+                        Annuler
+                      </button>
+
+                      <button
+                        type="button"
+                        className="primary-button"
+                        disabled={saving}
+                        onClick={() => void enregistrerModification()}
+                      >
+                        {saving ? 'Enregistrement…' : 'Enregistrer'}
+                      </button>
+                    </>
+                  ) : (
+                    <>
+
+                      {role === 'superviseur' && !validationConfirmee && (
+                        <>
+                          <button
+                            type="button"
+                            className="secondary-button"
+                            disabled={busy || deleting}
+                            onClick={() => fichePourAction && onAction?.(fichePourAction, 'valider')}
+                          >
+                            Valider
+                          </button>
+                        </>
+                      )}
+
+                      {role === 'administrateur_national' && (
+                        <button
+                          type="button"
+                          className="danger-button"
+                          disabled={deleting || busy}
+                          onClick={() => void supprimer()}
+                        >
+                          {deleting ? 'Suppression…' : 'Supprimer la fiche'}
+                        </button>
+                      )}
+
+                      {role === 'superviseur' && validationConfirmee && (
+                        <span className="status confirmed">
+                          Déjà validée
+                        </span>
+                      )}
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </section>
     )
-
-    await onRefresh()
-  } catch (e) {
-    if (e instanceof ApiError && e.status === 401) {
-      await onSessionInvalid()
-      return
-    }
-
-    setError(
-      e instanceof Error
-        ? e.message
-        : 'Impossible de supprimer la fiche.',
-    )
-  } finally {
-    setDeleting(false)
   }
-}
 
   return (
     <>
-      <div className="fiche-actions">
-        <button type="button" className="secondary-button" disabled={loading || deleting} onClick={() => void consulter()}>
-          {loading ? 'Chargement…' : 'Consulter'}
-        </button>
-        {role === 'administrateur_national' && (
-          <button type="button" className="danger-button" disabled={loading || deleting} onClick={() => void supprimer()}>
-            {deleting ? 'Suppression…' : 'Supprimer'}
+      {!hideActions && (
+        <div className="fiche-actions">
+          <button
+            type="button"
+            className="secondary-button"
+            disabled={loading || deleting}
+            onClick={() => void consulter()}
+          >
+            {loading ? 'Chargement…' : 'Consulter'}
           </button>
-        )}
-      </div>
+
+          {role === 'administrateur_national' && (
+            <button
+              type="button"
+              className="danger-button"
+              disabled={loading || deleting}
+              onClick={() => void supprimer()}
+            >
+              {deleting ? 'Suppression…' : 'Supprimer'}
+            </button>
+          )}
+        </div>
+      )}
 
       {error && <p className="alert error">{error}</p>}
 
-      {showDetail && detail && (
-        <div className="user-modal-backdrop" onClick={() => setShowDetail(false)}>
+      {showDetail && detail && createPortal(
+        <div className="user-modal-backdrop" onClick={fermerDetail}>
           <section
             className="user-modal fiche-modal"
             role="dialog"
@@ -157,21 +707,38 @@ async function supprimer() {
             aria-labelledby="fiche-detail-title"
             onClick={(event) => event.stopPropagation()}
           >
-            <div className="panel-heading">
+            <div className="panel-heading fiche-modal-header">
               <div>
-                <h2 id="fiche-detail-title">Fiche {numeroFiche || ficheId}</h2>
-                <p className="muted">Consultation des données enregistrées</p>
+                <h2 id="fiche-detail-title">
+                  Fiche {String(detail.numero_fiche || numeroFiche || ficheId)}
+                </h2>
+                <p className="muted">
+                  Consultation des données enregistrées
+                </p>
               </div>
-              <button type="button" className="secondary-button" onClick={() => setShowDetail(false)}>
+
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={fermerDetail}
+              >
                 Fermer
               </button>
             </div>
 
             {error && <div className="alert error">{error}</div>}
 
-            <div className="user-form-grid">
+            <div className="user-form-grid fiche-detail-content">
               {Object.entries(detail)
-                .filter(([key]) => !['id', 'agent_id', 'validee_par_id', 'supprime_le'].includes(key))
+                .filter(
+                  ([key]) =>
+                    ![
+                      'id',
+                      'agent_id',
+                      'validee_par_id',
+                      'supprime_le',
+                    ].includes(key),
+                )
                 .map(([key, value]) => (
                   <label className="nf-field" key={key}>
                     <span>{labels[key] || key.replaceAll('_', ' ')}</span>
@@ -179,9 +746,76 @@ async function supprimer() {
                   </label>
                 ))}
             </div>
+
+            {showWorkflowActions && (
+              <div className="fiche-modal-footer">
+                <div className="fiche-modal-footer-info">
+                  <strong>Gestion de la fiche</strong>
+                  <span>
+                    {validationConfirmee
+                      ? 'Cette fiche est déjà validée.'
+                      : 'Choisissez une action à effectuer sur cette fiche.'}
+                  </span>
+                </div>
+
+                <div className="fiche-modal-footer-buttons">
+                  {role === 'superviseur' && !validationConfirmee && (
+                    <>
+                      <button
+                        type="button"
+                        className="secondary-button"
+                        disabled={busy || deleting}
+                        onClick={() => fiche && onAction?.(fiche, 'valider')}
+                      >
+                        Valider
+                      </button>
+
+                      <button
+                        type="button"
+                        className="secondary-button"
+                        disabled={busy || deleting}
+                        onClick={() =>
+                          fiche && onAction?.(fiche, 'demander-correction')
+                        }
+                      >
+                        Demander correction
+                      </button>
+
+                      <button
+                        type="button"
+                        className="secondary-button"
+                        disabled={busy || deleting}
+                        onClick={() =>
+                          fiche && onAction?.(fiche, 'traiter-correction')
+                        }
+                      >
+                        Traiter réponse
+                      </button>
+                    </>
+                  )}
+
+                  {role === 'administrateur_national' && (
+                    <button
+                      type="button"
+                      className="danger-button"
+                      disabled={deleting || busy}
+                      onClick={() => void supprimer()}
+                    >
+                      {deleting ? 'Suppression…' : 'Supprimer la fiche'}
+                    </button>
+                  )}
+
+                  {role === 'superviseur' && validationConfirmee && (
+                    <span className="status confirmed">
+                      Déjà validée
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
           </section>
-        </div>
-      )}
+        </div>, document.body)}
     </>
   )
 }
+

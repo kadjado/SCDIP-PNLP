@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Icon from '../shared/Icon'
 import type { User } from '../../types'
 
@@ -12,6 +12,7 @@ type AppTopbarProps = {
   onToggleMenu: () => void
   onRefresh: () => void
   onTogglePush: () => void
+  onOpenNotifications: () => void
   onOpenAccountPage: (target: 'profil' | 'aide') => void
   onLogout: () => void
 }
@@ -26,11 +27,14 @@ function AppTopbar({
   onToggleMenu,
   onRefresh,
   onTogglePush,
+  onOpenNotifications,
   onOpenAccountPage,
   onLogout,
 }: AppTopbarProps) {
   const [profileMenuOpen, setProfileMenuOpen] = useState(false)
+  const [notificationMenuOpen, setNotificationMenuOpen] = useState(false)
   const profileRef = useRef<HTMLDivElement>(null)
+  const notificationRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!profileMenuOpen) return
@@ -53,6 +57,31 @@ function AppTopbar({
       document.removeEventListener('keydown', onKeyDown)
     }
   }, [profileMenuOpen])
+
+  useEffect(() => {
+    if (!notificationMenuOpen) return
+
+    const onPointerDown = (event: MouseEvent) => {
+      if (
+        notificationRef.current &&
+        !notificationRef.current.contains(event.target as Node)
+      ) {
+        setNotificationMenuOpen(false)
+      }
+    }
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setNotificationMenuOpen(false)
+    }
+
+    document.addEventListener('mousedown', onPointerDown)
+    document.addEventListener('keydown', onKeyDown)
+
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown)
+      document.removeEventListener('keydown', onKeyDown)
+    }
+  }, [notificationMenuOpen])
 
   const openAccountPage = (target: 'profil' | 'aide') => {
     setProfileMenuOpen(false)
@@ -89,21 +118,69 @@ function AppTopbar({
           </span>
         </button>
 
-        <button
-          type="button"
-          className={`bell-button ${pushEnabled ? '' : 'is-off'}`}
-          onClick={onTogglePush}
-          disabled={pushBusy}
-          title={pushEnabled ? 'Désactiver les notifications' : 'Activer les notifications'}
-          aria-label={pushEnabled ? 'Désactiver les notifications' : 'Activer les notifications'}
-        >
-          <Icon name="bell" />
-          {unreadNotifications > 0 && (
-            <span className="bell-badge">
-              {unreadNotifications > 99 ? '99+' : unreadNotifications}
-            </span>
+        <div className="notification-actions" ref={notificationRef}>
+          <button
+            type="button"
+            className="bell-button"
+            onClick={onOpenNotifications}
+            title="Voir les notifications"
+            aria-label="Voir les notifications"
+          >
+            <Icon name="bell" />
+            {unreadNotifications > 0 && (
+              <span className="bell-badge">
+                {unreadNotifications > 99 ? '99+' : unreadNotifications}
+              </span>
+            )}
+          </button>
+
+          <button
+            type="button"
+            className={`notification-chevron ${notificationMenuOpen ? 'is-open' : ''}`}
+            onClick={() => setNotificationMenuOpen((value) => !value)}
+            aria-label="Ouvrir les options de notification"
+            aria-haspopup="menu"
+            aria-expanded={notificationMenuOpen}
+            title="Options des notifications"
+          >
+            <Icon name="chevron" />
+          </button>
+
+          {notificationMenuOpen && (
+            <div className="notification-menu" role="menu">
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setNotificationMenuOpen(false)
+                  onOpenNotifications()
+                }}
+              >
+                <Icon name="bell" />
+                Voir les notifications
+              </button>
+
+              <div className="notification-menu-sep" />
+
+              <button
+                type="button"
+                role="menuitem"
+                disabled={pushBusy}
+                onClick={() => {
+                  setNotificationMenuOpen(false)
+                  onTogglePush()
+                }}
+              >
+                <Icon name={pushEnabled ? 'bell' : 'bellOff'} />
+                {pushBusy
+                  ? 'Veuillez patienter…'
+                  : pushEnabled
+                    ? 'Désactiver les notifications'
+                    : 'Activer les notifications'}
+              </button>
+            </div>
           )}
-        </button>
+        </div>
 
         <span className="top-divider" />
 

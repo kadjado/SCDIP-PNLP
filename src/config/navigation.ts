@@ -1,7 +1,7 @@
 ﻿export const navigation = [
   { id: 'dashboard', icon: 'dashboard', label: 'Tableau de bord' },
   { id: 'fiches', icon: 'fiches', label: 'Fiches paludisme' },
-  { id: 'mailbox', icon: 'mailbox', label: 'Messagerie' },
+  { id: 'mailbox', icon: 'bell', label: 'Notifications' },
   { id: 'users', icon: 'users', label: 'Utilisateurs' },
   { id: 'structures', icon: 'structures', label: 'Structures sanitaires' },
 ] as const
@@ -46,7 +46,7 @@ export const pageSubtitles: Partial<Record<Page, string>> = {
 export const pagePaths: Record<Page, string> = {
   dashboard: '/dashboard',
   fiches: '/forms',
-  mailbox: '/messagerie',
+  mailbox: '/notifications',
   users: '/utilisateurs',
   structures: '/structures',
   journaux: '/parametres/journaux',
@@ -61,7 +61,7 @@ export const pathPages: Record<string, Page> = {
   '/login': 'dashboard',
   '/dashboard': 'dashboard',
   '/forms': 'fiches',
-  '/messagerie': 'mailbox',
+  '/notifications': 'mailbox',
   '/utilisateurs': 'users',
   '/structures': 'structures',
   '/parametres/journaux': 'journaux',

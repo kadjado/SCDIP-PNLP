@@ -1,4 +1,4 @@
-﻿import DashboardPage from '../dashboard/DashboardPage'
+import DashboardPage from '../dashboard/DashboardPage'
 import FichesPage from '../fiches/FichesPage'
 import Mailbox from '../mailbox/Mailbox'
 import UserCrud from '../users/UserCrud'
@@ -9,6 +9,8 @@ import ProfilePage from '../account/ProfilePage'
 import HelpPage from '../account/HelpPage'
 import ReportsCenter from "../reports/ReportsCenter";
 import type { Page } from '../../config/navigation'
+
+//import ExportCenter from '../exports/ExportCenter'
 
 import type { Fiche, Structure, User } from '../../types'
 import type { Dispatch, SetStateAction } from 'react'
@@ -61,6 +63,10 @@ type AppPagesProps = {
   onUsersRefresh: () => Promise<void>
   
   onSessionInvalid: () => Promise<void>
+  ficheIdToOpen: string | null
+  notificationIdToOpen: string | null
+  onAutoOpenClose: () => void
+  onOpenFiche: (ficheId: string) => void
 }
 
 function AppPages({
@@ -95,6 +101,10 @@ function AppPages({
   onUnreadCountChange,
   onUsersRefresh,
   onSessionInvalid,
+  ficheIdToOpen,
+  notificationIdToOpen,
+  onAutoOpenClose,
+  onOpenFiche,
 }: AppPagesProps) {
   return (
     <>
@@ -138,6 +148,8 @@ function AppPages({
           onRefresh={onRefresh}
           onCreated={onCreated}
           onSessionInvalid={onSessionInvalid}
+          ficheIdToOpen={ficheIdToOpen}
+          onAutoOpenClose={onAutoOpenClose}
         />
       )}
 
@@ -145,6 +157,10 @@ function AppPages({
         <Mailbox
           token={token}
           onUnreadCountChange={onUnreadCountChange}
+          notificationIdToOpen={notificationIdToOpen}
+          ficheIdToOpen={ficheIdToOpen}
+          onSessionInvalid={onSessionInvalid}
+          onOpenFiche={onOpenFiche}
         />
       )}
 
@@ -182,16 +198,14 @@ function AppPages({
       )}
 
       {page === 'rapport' && (
-        <ReportsCenter token={token} />
-      )}
+      <ReportsCenter
+        token={token}
+        onSetPage={onSetPage}
+      />  
+    )}
 
-      {page === 'export' && (
-        <ComingSoon
-          icon="download"
-          text="L’export des données sera disponible ici."
-        />
-      )}
-
+    
+      
       {page === 'profil' && (
         <ProfilePage user={user} roleLabel={userRoleLabel} />
       )}

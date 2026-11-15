@@ -1,4 +1,4 @@
-﻿import {
+import {
   createContext,
   useCallback,
   useContext,
@@ -10,6 +10,7 @@
 
 import type { User } from '../types'
 import { API_URL } from '../services/api'
+import { withGlobalLoading } from '../services/globalLoading'
 
 type AuthContextType = {
   token: string
@@ -78,6 +79,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }, [setToken])
 
   const login = useCallback(async (email: string, password: string) => {
+    await withGlobalLoading(async () => {
     const response = await fetch(`${API_URL}/api/v1/auth/login`, {
       method: 'POST',
       credentials: 'include',
@@ -113,6 +115,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
 
     setToken(body.access_token)
+    })
   }, [setToken])
 
   const value = useMemo<AuthContextType>(

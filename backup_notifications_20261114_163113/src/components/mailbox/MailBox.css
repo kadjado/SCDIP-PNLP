@@ -1,0 +1,392 @@
+/* ===== Messagerie SCDIP-PNLP — style dédié (même univers visuel que la page de connexion) ===== */
+
+.panel.mailbox {
+  --mb-navy: #0b2a8a;
+  --mb-ink: #0b2455;
+  --mb-blue: #0a63b0;
+  --mb-green: #1aa34f;
+  --mb-line: #e3ebf5;
+  padding: 0;
+  overflow: hidden;
+  border-radius: 16px;
+  border: 1px solid var(--mb-line);
+  background: #fff;
+  box-shadow: 0 14px 40px #0e345b12;
+}
+
+/* ---------- En-tête ---------- */
+.panel.mailbox .mailbox-heading {
+  margin: 0;
+  padding: 24px 28px;
+  align-items: center;
+  background:
+    radial-gradient(120% 220% at 100% 0%, #d9f0e6 0%, transparent 55%),
+    linear-gradient(100deg, #eef5fd 0%, #f6fbfd 100%);
+  border-bottom: 1px solid var(--mb-line);
+}
+
+.panel.mailbox .mailbox-heading h2 {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 0 0 4px;
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.4px;
+  color: var(--mb-navy);
+}
+
+.panel.mailbox .mailbox-heading h2::before {
+  content: "✉";
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  flex: 0 0 46px;
+  border-radius: 14px;
+  font-size: 24px;
+  font-weight: 400;
+  color: #fff;
+  background: linear-gradient(135deg, var(--mb-blue), var(--mb-green));
+  box-shadow: 0 8px 18px #0a63b033;
+}
+
+.panel.mailbox .mailbox-heading .muted {
+  margin: 0 0 0 60px;
+  font-size: 15.5px;
+  color: #4a5f82;
+}
+
+.panel.mailbox .mailbox-heading .secondary-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 20px;
+  border: 1.5px solid #c3d6ee;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--mb-blue);
+  font-size: 15px;
+  font-weight: 700;
+  transition: background 0.15s, color 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+
+.panel.mailbox .mailbox-heading .secondary-button::before {
+  content: "↻";
+  font-size: 18px;
+  line-height: 1;
+}
+
+.panel.mailbox .mailbox-heading .secondary-button:hover:not(:disabled) {
+  background: var(--mb-blue);
+  border-color: var(--mb-blue);
+  color: #fff;
+  box-shadow: 0 6px 16px #0a63b033;
+}
+
+/* ---------- Barre d'outils ---------- */
+.panel.mailbox .mailbox-toolbar {
+  padding: 16px 28px;
+  border-bottom: 1px solid var(--mb-line);
+  background: #fbfdff;
+}
+
+.panel.mailbox .mailbox-filters {
+  gap: 4px;
+  padding: 4px;
+  border-radius: 999px;
+  background: #eaf1f9;
+}
+
+.panel.mailbox .mailbox-filter {
+  padding: 9px 20px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #4f6485;
+  font-size: 15px;
+  font-weight: 600;
+  transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+}
+
+.panel.mailbox .mailbox-filter:hover {
+  color: var(--mb-navy);
+}
+
+.panel.mailbox .mailbox-filter.active {
+  background: #fff;
+  color: var(--mb-blue);
+  font-weight: 800;
+  box-shadow: 0 3px 10px #0e345b1f;
+}
+
+.panel.mailbox .mailbox-toolbar .text-button {
+  gap: 8px;
+  padding: 9px 16px;
+  border-radius: 999px;
+  color: var(--mb-green);
+  font-size: 15px;
+  font-weight: 700;
+  transition: background 0.15s;
+}
+
+.panel.mailbox .mailbox-toolbar .text-button::before {
+  content: "✓✓";
+  font-size: 13px;
+  letter-spacing: -2px;
+}
+
+.panel.mailbox .mailbox-toolbar .text-button:hover:not(:disabled) {
+  background: #e4f6ec;
+}
+
+.panel.mailbox .mailbox-toolbar .text-button:disabled {
+  color: #9aabc2;
+  cursor: not-allowed;
+}
+
+.panel.mailbox .alert.error {
+  margin: 16px 28px 0;
+}
+
+/* ---------- Liste ---------- */
+.panel.mailbox .mailbox-list {
+  gap: 12px;
+  padding: 20px 28px 28px;
+  background: #f7fafd;
+}
+
+.panel.mailbox .mailbox-item {
+  position: relative;
+  align-items: center;
+  gap: 18px;
+  padding: 18px 22px 18px 24px;
+  border: 1px solid var(--mb-line);
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 2px 8px #0e345b0a, inset 5px 0 0 #bfe5cd;
+  transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+}
+
+.panel.mailbox .mailbox-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px #0e345b1a, inset 5px 0 0 #bfe5cd;
+}
+
+.panel.mailbox .mailbox-item.unread {
+  border-color: #c9ddf5;
+  background: linear-gradient(95deg, #eaf4ff 0%, #ffffff 55%);
+  box-shadow: 0 6px 18px #0a63b01a, inset 5px 0 0 var(--mb-blue);
+}
+
+.panel.mailbox .mailbox-item.unread:hover {
+  box-shadow: 0 12px 28px #0a63b02a, inset 5px 0 0 var(--mb-blue);
+}
+
+/* Pastille d'état */
+.panel.mailbox .mailbox-item-icon {
+  flex: 0 0 46px;
+  width: 46px;
+  height: 46px;
+  font-size: 18px;
+  font-weight: 800;
+  border-radius: 50%;
+  color: #fff;
+  background: linear-gradient(135deg, #1f7cf6, #0553d6);
+  box-shadow: 0 6px 14px #0a63b035;
+}
+
+.panel.mailbox .mailbox-item.read .mailbox-item-icon {
+  color: #1c9a50;
+  background: #e3f6ea;
+  box-shadow: none;
+}
+
+/* Contenu */
+.panel.mailbox .mailbox-item-content {
+  min-width: 0;
+}
+
+.panel.mailbox .mailbox-item-top {
+  gap: 10px 14px;
+  justify-content: flex-start;
+}
+
+.panel.mailbox .mailbox-item-top strong {
+  font-size: 17.5px;
+  font-weight: 800;
+  letter-spacing: -0.2px;
+  color: var(--mb-navy);
+}
+
+.panel.mailbox .mailbox-item.read .mailbox-item-top strong {
+  font-weight: 700;
+  color: #3a4f72;
+}
+
+.panel.mailbox .mailbox-unread-label {
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--mb-blue), #1a8ac4);
+  color: #fff;
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+}
+
+.panel.mailbox .mailbox-item-content > p {
+  margin: 8px 0 12px;
+  font-size: 15.5px;
+  line-height: 1.6;
+  color: #34496d;
+}
+
+.panel.mailbox .mailbox-item.read .mailbox-item-content > p {
+  color: #5d7092;
+}
+
+/* Métadonnées : date + puces */
+.panel.mailbox .mailbox-meta {
+  gap: 8px 10px;
+  font-size: 13.5px;
+  color: #6a7d9b;
+}
+
+.panel.mailbox .mailbox-meta span:first-child {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #6a7d9b;
+}
+
+.panel.mailbox .mailbox-meta span:first-child::before {
+  content: "🕒";
+  font-size: 12px;
+  filter: grayscale(1);
+  opacity: 0.8;
+}
+
+.panel.mailbox .mailbox-meta span:not(:first-child) {
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: #eaf1f9;
+  color: #2f4a78;
+  font-weight: 600;
+}
+
+.panel.mailbox .mailbox-meta span:last-child:not(:first-child) {
+  background: #e4f6ec;
+  color: #14803f;
+  text-transform: capitalize;
+}
+
+/* Bouton « Marquer comme lue » */
+.panel.mailbox .mailbox-read-button {
+  flex-shrink: 0;
+  padding: 10px 18px;
+  border: 1.5px solid #bcd3ee;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--mb-blue);
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.panel.mailbox .mailbox-read-button:hover:not(:disabled) {
+  border-color: var(--mb-green);
+  background: var(--mb-green);
+  color: #fff;
+}
+
+/* ---------- État vide / chargement ---------- */
+.panel.mailbox .mailbox-empty {
+  margin: 28px;
+  padding: 56px 20px;
+  border: 2px dashed #cfdcee;
+  border-radius: 16px;
+  background: #f7fafd;
+  color: #5d7092;
+  font-size: 16px;
+}
+
+.panel.mailbox .mailbox-empty-icon {
+  display: grid;
+  place-items: center;
+  width: 76px;
+  height: 76px;
+  margin: 0 auto 6px;
+  border-radius: 50%;
+  font-size: 34px;
+  color: #fff;
+  background: linear-gradient(135deg, var(--mb-blue), var(--mb-green));
+  box-shadow: 0 10px 24px #0a63b030;
+}
+
+.panel.mailbox .mailbox-empty strong {
+  margin-top: 12px;
+  font-size: 19px;
+  color: var(--mb-navy);
+}
+
+.panel.mailbox .mailbox-empty p {
+  margin: 6px 0 0;
+}
+
+/* ---------- Adaptation mobile ---------- */
+@media (max-width: 760px) {
+  .panel.mailbox .mailbox-heading,
+  .panel.mailbox .mailbox-toolbar {
+    padding: 16px;
+  }
+
+  .panel.mailbox .mailbox-heading .muted {
+    margin-left: 0;
+  }
+
+  .panel.mailbox .mailbox-toolbar {
+    gap: 10px;
+  }
+
+  .panel.mailbox .mailbox-filters {
+    width: 100%;
+  }
+
+  .panel.mailbox .mailbox-filter {
+    flex: 1;
+    padding: 9px 10px;
+    font-size: 14px;
+  }
+
+  .panel.mailbox .mailbox-list {
+    padding: 14px 12px 20px;
+  }
+
+  .panel.mailbox .mailbox-item {
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 12px 14px;
+    padding: 16px;
+  }
+
+  .panel.mailbox .mailbox-item-icon {
+    flex-basis: 40px;
+    width: 40px;
+    height: 40px;
+  }
+
+  .panel.mailbox .mailbox-read-button {
+    margin-left: 54px;
+  }
+
+  .panel.mailbox .alert.error {
+    margin: 12px 16px 0;
+  }
+
+  .panel.mailbox .mailbox-empty {
+    margin: 16px;
+    padding: 40px 14px;
+  }
+}
