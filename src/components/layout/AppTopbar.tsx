@@ -175,8 +175,8 @@ function AppTopbar({
                 {pushBusy
                   ? 'Veuillez patienter…'
                   : pushEnabled
-                    ? 'Désactiver les alertes'
-                    : 'Activer les alertes'}
+                    ? 'Désactiver les notifications'
+                    : 'Activer les notifications'}
               </button>
             </div>
           )}
