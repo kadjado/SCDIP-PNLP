@@ -1,7 +1,7 @@
 ﻿export const navigation = [
   { id: 'dashboard', icon: 'dashboard', label: 'Tableau de bord' },
   { id: 'fiches', icon: 'fiches', label: 'Fiches paludisme' },
-  { id: 'mailbox', icon: 'bell', label: 'Notifications' },
+  { id: 'mailbox', icon: 'bell', label: 'Alertes' },
   { id: 'users', icon: 'users', label: 'Utilisateurs' },
   { id: 'structures', icon: 'structures', label: 'Structures sanitaires' },
 ] as const
